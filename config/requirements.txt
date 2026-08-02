@@ -1,0 +1,3 @@
+Django==6.0.7
+gunicorn
+whitenoise
