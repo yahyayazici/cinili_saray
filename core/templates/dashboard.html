@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yönetim Paneli | Çinili Saray</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #070b14;
+            color: white;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            padding: 28px 20px;
+            border-right: 1px solid rgba(255,255,255,.08);
+            background: #0b101b;
+        }
+
+        .brand {
+            font-weight: 800;
+            letter-spacing: .08em;
+            margin-bottom: 40px;
+        }
+
+        .menu a {
+            display: block;
+            padding: 13px 14px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            color: #8f9ab0;
+            text-decoration: none;
+        }
+
+        .menu a.active {
+            color: white;
+            background: rgba(255,255,255,.07);
+        }
+
+        .main {
+            padding: 32px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .topbar h1 {
+            font-size: 30px;
+        }
+
+        .user {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: #1d2941;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .card {
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 18px;
+            background: rgba(255,255,255,.04);
+        }
+
+        .card small {
+            color: #8d98ad;
+        }
+
+        .card strong {
+            display: block;
+            margin-top: 14px;
+            font-size: 30px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .panel {
+            min-height: 300px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 18px;
+            background: rgba(255,255,255,.04);
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .stats,
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+    .welcome-text {
+    margin-top: 8px;
+    color: #8d98ad;
+    font-size: 14px;
+}
+
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 11px 16px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #ffffff, #a9c6ff);
+    color: #08101d;
+}
+
+.action-btn.secondary {
+    color: white;
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.04);
+}  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.quick-btn {
+    background: #131a2c;
+    border: 1px solid rgba(255, 255, 255, .08);
+    color: white;
+    padding: 18px;
+    border-radius: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: .25s;
+}
+
+.quick-btn:hover {
+    transform: translateY(-3px);
+    background: #1d2944;
+    border-color: #4f7cff;
+    box-shadow: 0 10px 30px rgba(79, 124, 255, .25);
+}
+
+.panel {
+    height: 400px;
+    overflow: hidden;
+}
+
+.panel canvas {
+    display: block;
+    width: 100% !important;
+    height: 280px !important;
+    max-height: 280px !important;
+}
+</style>
+
+
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">ÇİNİLİ SARAY</div>
+
+        <div class="menu">
+            <a href="#" class="active">Ana Panel</a>
+            <a href="#">Talebeler</a>
+            <a href="#">Öğretmenler</a>
+            <a href="#">Veliler</a>
+            <a href="#">Sınavlar</a>
+            <a href="#">Yoklamalar</a>
+            <a href="#">Raporlar</a>
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+
+    <div>
+        <small>2 Ağustos 2026</small>
+        <h1>Günaydın, Yahya 👋</h1>
+        <p class="welcome-text">
+            Bugün 128 talebenin 121'i kurumda. 6 aktif ders devam ediyor.
+        </p>
+    </div>
+
+    <div class="top-actions">
+        <a href="#" class="action-btn secondary">Deneme Oluştur</a>
+        <a href="#" class="action-btn primary">Yeni Talebe</a>
+        <div class="user">YY</div>
+         </div>
+
+    </div>
+        <section class="stats">
+    <div class="card">
+        <small>Toplam Talebe</small>
+        <strong>128</strong>
+    </div>
+
+    <div class="card">
+        <small>Öğretmen</small>
+        <strong>24</strong>
+    </div>
+
+    <div class="card">
+        <small>Bugünkü Katılım</small>
+        <strong>%97</strong>
+    </div>
+
+    <div class="card">
+        <small>Aktif Sınav</small>
+        <strong>6</strong>
+    </div>
+</section>
+        <section class="content-grid">
+
+    <div class="panel">
+        <h2>📈 Akademik Gelişim</h2>
+        <canvas id="academicChart"></canvas>
+    </div>
+
+    <div class="panel">
+        <h2>⚡ Hızlı İşlemler</h2>
+
+        <div class="quick-grid">
+            <button class="quick-btn">➕ Talebe Ekle</button>
+            <button class="quick-btn">📝 Yoklama Al</button>
+            <button class="quick-btn">📊 Deneme Oluştur</button>
+            <button class="quick-btn">👨‍🏫 Öğretmen</button>
+            <button class="quick-btn">👨‍👩‍👦 Veli</button>
+            <button class="quick-btn">📄 Raporlar</button>
+        </div>
+
+    </div>
+
+</section>
+        </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('academicChart');
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['1. Deneme', '2. Deneme', '3. Deneme', '4. Deneme', '5. Deneme', '6. Deneme'],
+            datasets: [{
+                label: 'Genel Başarı',
+                data: [62, 68, 71, 76, 81, 86],
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+    responsive: true,
+    maintainAspectRatio: false,
+
+    plugins: {
+        legend: {
+            labels: {
+                color: "#c7d2fe"
+            }
+        }
+    },
+
+    scales: {
+        x: {
+            ticks: {
+                color: "#8b97b5"
+            },
+            grid: {
+                color: "rgba(255,255,255,.05)"
+            }
+        },
+        y: {
+            min: 50,
+            max: 90,
+            ticks: {
+                color: "#8b97b5"
+            },
+            grid: {
+                color: "rgba(255,255,255,.05)"
+            }
+        }
+    }
+     }
+});
+</script>
+</body>
+</html>
