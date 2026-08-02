@@ -84,6 +84,11 @@
             color:#8ea4d8;
             margin-bottom:20px;
         }
+        .error-message {
+    margin: 12px 0 0;
+    color: #ff8f8f;
+    font-size: 13px;
+}
     </style>
 </head>
 <body>
@@ -98,11 +103,29 @@
 
     <p>Eğitim Yönetim Sistemine giriş yapın.</p>
 
-    <input type="text" placeholder="Kullanıcı Adı">
+   <form method="post">
+    {% csrf_token %}
 
-    <input type="password" placeholder="Şifre">
+    <input
+        type="text"
+        name="username"
+        placeholder="Kullanıcı Adı"
+        required
+    >
 
-    <button>Giriş Yap</button>
+    <input
+        type="password"
+        name="password"
+        placeholder="Şifre"
+        required
+    >
+
+    {% if error_message %}
+        <p class="error-message">{{ error_message }}</p>
+    {% endif %}
+
+    <button type="submit">Giriş Yap</button>
+</form>
 
 </div>
 
