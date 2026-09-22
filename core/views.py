@@ -38,19 +38,4 @@ def login_view(request):
 
 @login_required(login_url="login")
 def dashboard(request):
-    full_name = (request.user.get_full_name() or "").strip()
-    display_name = full_name or request.user.username
-    if full_name:
-        parts = full_name.split()
-        initials = (parts[0][0] + parts[-1][0]).upper() if len(parts) >= 2 else parts[0][:2].upper()
-    else:
-        initials = request.user.username[:2].upper()
-
-    return render(
-        request,
-        "dashboard.html",
-        {
-            "display_name": display_name,
-            "initials": initials,
-        },
-    )
+    return render(request, "dashboard.html")
