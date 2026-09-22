@@ -3,339 +3,713 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yönetim Paneli | Çinili Saray</title>
-
+    <title>Ana Panel | Çinili Saray</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500;6..96,600;6..96,700&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --ink: #10141c;
+            --ink-soft: #5a6475;
+            --line: #d7dde8;
+            --panel: #f4f6f9;
+            --white: #ffffff;
+            --accent: #1557a0;
+            --accent-deep: #0d3f78;
+            --accent-soft: rgba(21, 87, 160, 0.08);
+            --good: #1f6b4a;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        html, body {
+            min-height: 100%;
         }
 
         body {
-            min-height: 100vh;
-            background: #070b14;
-            color: white;
+            color: var(--ink);
+            background: var(--white);
+            font-family: "Sora", sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .layout {
-            display: grid;
-            grid-template-columns: 240px 1fr;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            padding: 28px 20px;
-            border-right: 1px solid rgba(255,255,255,.08);
-            background: #0b101b;
-        }
-
-        .brand {
-            font-weight: 800;
-            letter-spacing: .08em;
-            margin-bottom: 40px;
-        }
-
-        .menu a {
-            display: block;
-            padding: 13px 14px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            color: #8f9ab0;
+        a {
+            color: inherit;
             text-decoration: none;
         }
 
-        .menu a.active {
-            color: white;
-            background: rgba(255,255,255,.07);
+        button {
+            font: inherit;
         }
 
-        .main {
-            padding: 32px;
+        .shell {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 248px 1fr;
         }
 
-        .topbar {
+        /* —— Yan menü —— */
+        .rail {
+            position: sticky;
+            top: 0;
+            height: 100vh;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            padding: 28px 18px 24px;
+            border-right: 1px solid var(--line);
+            background: var(--white);
+        }
+
+        .rail-brand {
+            display: flex;
             align-items: center;
-            margin-bottom: 32px;
+            gap: 12px;
+            padding: 0 10px 28px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+            opacity: 0;
+            animation: rise 0.7s ease 0.1s forwards;
         }
 
-        .topbar h1 {
-            font-size: 30px;
-        }
-
-        .user {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
+        .rail-mark {
+            width: 38px;
+            height: 38px;
             display: grid;
             place-items: center;
-            background: #1d2941;
+            position: relative;
+            color: var(--accent);
+            font-family: "Bodoni Moda", serif;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
         }
 
-        .stats {
+        .rail-mark::before,
+        .rail-mark::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 1.5px solid var(--accent);
+        }
+
+        .rail-mark::after {
+            inset: 6px;
+            transform: rotate(45deg);
+        }
+
+        .rail-brand strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .rail-brand span {
+            display: block;
+            margin-top: 3px;
+            font-size: 10px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            font-weight: 500;
+        }
+
+        .rail-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            opacity: 0;
+            animation: rise 0.7s ease 0.25s forwards;
+        }
+
+        .rail-label {
+            margin: 18px 10px 8px;
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: #8a93a3;
+            font-weight: 500;
+        }
+
+        .rail-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 44px;
+            padding: 0 12px;
+            color: var(--ink-soft);
+            font-size: 13px;
+            font-weight: 400;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .rail-nav a .idx {
+            width: 22px;
+            font-size: 11px;
+            letter-spacing: 0.04em;
+            color: #9aa3b2;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .rail-nav a:hover {
+            color: var(--ink);
+            background: var(--panel);
+        }
+
+        .rail-nav a.active {
+            color: var(--accent-deep);
+            background: var(--accent-soft);
+            box-shadow: inset 3px 0 0 var(--accent);
+            font-weight: 500;
+        }
+
+        .rail-nav a.active .idx {
+            color: var(--accent);
+        }
+
+        .rail-foot {
+            padding: 16px 10px 0;
+            border-top: 1px solid var(--line);
+            font-size: 11px;
+            color: var(--ink-soft);
+            letter-spacing: 0.04em;
+            opacity: 0;
+            animation: rise 0.7s ease 0.4s forwards;
+        }
+
+        /* —— Ana alan —— */
+        .workspace {
+            background: var(--panel);
+            min-width: 0;
+        }
+
+        .workspace-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: clamp(28px, 4vw, 44px);
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 28px;
+            padding-bottom: 28px;
+            border-bottom: 1px solid var(--line);
+            opacity: 0;
+            animation: rise 0.8s ease 0.15s forwards;
+        }
+
+        .hero-copy .eyebrow {
+            display: inline-block;
+            margin-bottom: 12px;
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .hero-copy h1 {
+            font-family: "Bodoni Moda", serif;
+            font-size: clamp(36px, 5vw, 52px);
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+        }
+
+        .hero-copy p {
+            margin-top: 12px;
+            max-width: 520px;
+            color: var(--ink-soft);
+            font-size: 14px;
+            line-height: 1.65;
+            font-weight: 300;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            padding: 0 18px;
+            border: 1px solid transparent;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s, border-color 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-deep);
+        }
+
+        .btn-ghost {
+            background: var(--white);
+            border-color: var(--line);
+            color: var(--ink);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--accent);
+            color: var(--accent-deep);
+        }
+
+        .avatar {
+            width: 46px;
+            height: 46px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--line);
+            background: var(--white);
+            color: var(--accent-deep);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+        }
+
+        /* —— Metrik şeridi (kart değil, tipografi) —— */
+        .metrics {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
+            margin: 28px 0;
+            background: var(--white);
+            border: 1px solid var(--line);
+            opacity: 0;
+            animation: rise 0.8s ease 0.3s forwards;
         }
 
-        .card {
-            padding: 24px;
-            border: 1px solid rgba(255,255,255,.08);
-            border-radius: 18px;
-            background: rgba(255,255,255,.04);
+        .metric {
+            padding: 26px 24px;
+            border-right: 1px solid var(--line);
         }
 
-        .card small {
-            color: #8d98ad;
+        .metric:last-child {
+            border-right: none;
         }
 
-        .card strong {
+        .metric small {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            font-weight: 500;
+        }
+
+        .metric strong {
             display: block;
             margin-top: 14px;
-            font-size: 30px;
+            font-family: "Bodoni Moda", serif;
+            font-size: clamp(34px, 4vw, 44px);
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            line-height: 1;
         }
 
-        .content-grid {
+        .metric em {
+            display: block;
+            margin-top: 10px;
+            font-style: normal;
+            font-size: 12px;
+            color: var(--good);
+            font-weight: 500;
+        }
+
+        /* —— İçerik —— */
+        .board {
             display: grid;
-            grid-template-columns: 1.4fr 1fr;
+            grid-template-columns: 1.45fr 0.9fr;
+            gap: 18px;
+            opacity: 0;
+            animation: rise 0.8s ease 0.45s forwards;
+        }
+
+        .block {
+            background: var(--white);
+            border: 1px solid var(--line);
+            min-height: 360px;
+        }
+
+        .block-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
             gap: 16px;
-            margin-top: 16px;
+            padding: 22px 24px 0;
         }
 
-        .panel {
-            min-height: 300px;
-            padding: 24px;
-            border: 1px solid rgba(255,255,255,.08);
-            border-radius: 18px;
-            background: rgba(255,255,255,.04);
+        .block-head h2 {
+            font-family: "Bodoni Moda", serif;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
         }
 
-        .panel h2 {
-            font-size: 18px;
-            margin-bottom: 20px;
+        .block-head span {
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
         }
 
-        @media (max-width: 900px) {
-            .layout {
+        .chart-wrap {
+            height: 280px;
+            padding: 12px 16px 20px;
+        }
+
+        .ops {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            margin: 20px;
+            background: var(--line);
+            border: 1px solid var(--line);
+        }
+
+        .ops button {
+            min-height: 92px;
+            padding: 18px 16px;
+            border: none;
+            background: var(--white);
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .ops button:hover {
+            background: var(--accent-soft);
+        }
+
+        .ops button b {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ink);
+        }
+
+        .ops button span {
+            display: block;
+            margin-top: 8px;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+
+        .agenda {
+            margin: 8px 20px 24px;
+            border-top: 1px solid var(--line);
+        }
+
+        .agenda-row {
+            display: grid;
+            grid-template-columns: 72px 1fr auto;
+            gap: 14px;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .agenda-row time {
+            font-size: 12px;
+            letter-spacing: 0.06em;
+            color: var(--accent);
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .agenda-row p {
+            font-size: 13px;
+            color: var(--ink);
+        }
+
+        .agenda-row small {
+            font-size: 11px;
+            color: var(--ink-soft);
+            letter-spacing: 0.04em;
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 980px) {
+            .shell {
                 grid-template-columns: 1fr;
             }
 
-            .sidebar {
-                display: none;
+            .rail {
+                position: relative;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
             }
 
-            .stats,
-            .content-grid {
-                grid-template-columns: 1fr;
+            .rail-nav {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+            }
+
+            .rail-label {
+                grid-column: 1 / -1;
+            }
+
+            .metrics,
+            .board {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .metric:nth-child(2) {
+                border-right: none;
+            }
+
+            .metric:nth-child(3),
+            .metric:nth-child(4) {
+                border-top: 1px solid var(--line);
             }
         }
 
-    .welcome-text {
-    margin-top: 8px;
-    color: #8d98ad;
-    font-size: 14px;
-}
+        @media (max-width: 640px) {
+            .hero {
+                flex-direction: column;
+                align-items: flex-start;
+            }
 
-.top-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+            .hero-actions {
+                width: 100%;
+            }
 
-.action-btn {
-    padding: 11px 16px;
-    border-radius: 12px;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 700;
-}
+            .btn {
+                flex: 1;
+            }
 
-.action-btn.primary {
-    background: linear-gradient(135deg, #ffffff, #a9c6ff);
-    color: #08101d;
-}
+            .metrics,
+            .board,
+            .ops,
+            .rail-nav {
+                grid-template-columns: 1fr;
+            }
 
-.action-btn.secondary {
-    color: white;
-    border: 1px solid rgba(255,255,255,.1);
-    background: rgba(255,255,255,.04);
-}  .quick-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-top: 18px;
-}
+            .metric {
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+            }
 
-.quick-btn {
-    background: #131a2c;
-    border: 1px solid rgba(255, 255, 255, .08);
-    color: white;
-    padding: 18px;
-    border-radius: 16px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: .25s;
-}
+            .metric:last-child {
+                border-bottom: none;
+            }
 
-.quick-btn:hover {
-    transform: translateY(-3px);
-    background: #1d2944;
-    border-color: #4f7cff;
-    box-shadow: 0 10px 30px rgba(79, 124, 255, .25);
-}
-
-.panel {
-    height: 400px;
-    overflow: hidden;
-}
-
-.panel canvas {
-    display: block;
-    width: 100% !important;
-    height: 280px !important;
-    max-height: 280px !important;
-}
-</style>
-
-
+            .agenda-row {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="shell">
+        <aside class="rail" aria-label="Yönetim menüsü">
+            <div class="rail-brand">
+                <div class="rail-mark" aria-hidden="true">ÇS</div>
+                <div>
+                    <strong>Çinili Saray</strong>
+                    <span>Yönetim</span>
+                </div>
+            </div>
 
-<div class="layout">
+            <nav class="rail-nav">
+                <div class="rail-label">Genel</div>
+                <a href="/panel/" class="active"><span class="idx">01</span> Ana Panel</a>
+                <a href="#"><span class="idx">02</span> Talebeler</a>
+                <a href="#"><span class="idx">03</span> Öğretmenler</a>
+                <a href="#"><span class="idx">04</span> Veliler</a>
 
-    <aside class="sidebar">
-        <div class="brand">ÇİNİLİ SARAY</div>
+                <div class="rail-label">İşlemler</div>
+                <a href="#"><span class="idx">05</span> Sınavlar</a>
+                <a href="#"><span class="idx">06</span> Yoklamalar</a>
+                <a href="#"><span class="idx">07</span> Raporlar</a>
+            </nav>
 
-        <div class="menu">
-            <a href="#" class="active">Ana Panel</a>
-            <a href="#">Talebeler</a>
-            <a href="#">Öğretmenler</a>
-            <a href="#">Veliler</a>
-            <a href="#">Sınavlar</a>
-            <a href="#">Yoklamalar</a>
-            <a href="#">Raporlar</a>
-        </div>
-    </aside>
+            <div class="rail-foot">
+                Yetkili oturum · {{ request.user.username }}
+            </div>
+        </aside>
 
-    <main class="main">
+        <main class="workspace">
+            <div class="workspace-inner">
+                <header class="hero">
+                    <div class="hero-copy">
+                        <div class="eyebrow">22 Eylül 2026 · Salı</div>
+                        <h1>Günaydın, {{ display_name }}</h1>
+                        <p>
+                            Bugün 128 talebenin 121’i kurumda. 6 aktif ders devam ediyor.
+                            Kurumun nabzı tek bakışta.
+                        </p>
+                    </div>
 
-        <div class="topbar">
+                    <div class="hero-actions">
+                        <a class="btn btn-ghost" href="#">Deneme Oluştur</a>
+                        <a class="btn btn-primary" href="#">Yeni Talebe</a>
+                        <div class="avatar" aria-hidden="true">{{ initials }}</div>
+                    </div>
+                </header>
 
-    <div>
-        <small>2 Ağustos 2026</small>
-        <h1>Günaydın, Yahya 👋</h1>
-        <p class="welcome-text">
-            Bugün 128 talebenin 121'i kurumda. 6 aktif ders devam ediyor.
-        </p>
-    </div>
+                <section class="metrics" aria-label="Özet göstergeler">
+                    <div class="metric">
+                        <small>Toplam Talebe</small>
+                        <strong>128</strong>
+                        <em>Yeni dönem aktif</em>
+                    </div>
+                    <div class="metric">
+                        <small>Öğretmen</small>
+                        <strong>24</strong>
+                        <em>Kadrosu tam</em>
+                    </div>
+                    <div class="metric">
+                        <small>Bugünkü Katılım</small>
+                        <strong>%97</strong>
+                        <em>121 mevcut</em>
+                    </div>
+                    <div class="metric">
+                        <small>Aktif Sınav</small>
+                        <strong>6</strong>
+                        <em>Bu hafta</em>
+                    </div>
+                </section>
 
-    <div class="top-actions">
-        <a href="#" class="action-btn secondary">Deneme Oluştur</a>
-        <a href="#" class="action-btn primary">Yeni Talebe</a>
-        <div class="user">YY</div>
-         </div>
+                <section class="board">
+                    <article class="block">
+                        <div class="block-head">
+                            <h2>Akademik gelişim</h2>
+                            <span>Son 6 deneme</span>
+                        </div>
+                        <div class="chart-wrap">
+                            <canvas id="academicChart" aria-label="Akademik gelişim grafiği"></canvas>
+                        </div>
+                    </article>
 
-    </div>
-        <section class="stats">
-    <div class="card">
-        <small>Toplam Talebe</small>
-        <strong>128</strong>
-    </div>
+                    <article class="block">
+                        <div class="block-head">
+                            <h2>Hızlı işlem</h2>
+                            <span>Sık kullanılanlar</span>
+                        </div>
 
-    <div class="card">
-        <small>Öğretmen</small>
-        <strong>24</strong>
-    </div>
+                        <div class="ops">
+                            <button type="button"><b>Talebe ekle</b><span>Kayıt</span></button>
+                            <button type="button"><b>Yoklama al</b><span>Günlük</span></button>
+                            <button type="button"><b>Deneme oluştur</b><span>Sınav</span></button>
+                            <button type="button"><b>Öğretmen</b><span>Kadrosu</span></button>
+                            <button type="button"><b>Veli</b><span>İletişim</span></button>
+                            <button type="button"><b>Raporlar</b><span>Özet</span></button>
+                        </div>
 
-    <div class="card">
-        <small>Bugünkü Katılım</small>
-        <strong>%97</strong>
-    </div>
-
-    <div class="card">
-        <small>Aktif Sınav</small>
-        <strong>6</strong>
-    </div>
-</section>
-        <section class="content-grid">
-
-    <div class="panel">
-        <h2>📈 Akademik Gelişim</h2>
-        <canvas id="academicChart"></canvas>
-    </div>
-
-    <div class="panel">
-        <h2>⚡ Hızlı İşlemler</h2>
-
-        <div class="quick-grid">
-            <button class="quick-btn">➕ Talebe Ekle</button>
-            <button class="quick-btn">📝 Yoklama Al</button>
-            <button class="quick-btn">📊 Deneme Oluştur</button>
-            <button class="quick-btn">👨‍🏫 Öğretmen</button>
-            <button class="quick-btn">👨‍👩‍👦 Veli</button>
-            <button class="quick-btn">📄 Raporlar</button>
-        </div>
-
-    </div>
-
-</section>
+                        <div class="agenda" aria-label="Bugünün akışı">
+                            <div class="agenda-row">
+                                <time>09:00</time>
+                                <p>Matematik deneme oturumu</p>
+                                <small>Salon A</small>
+                            </div>
+                            <div class="agenda-row">
+                                <time>11:30</time>
+                                <p>Veli bilgilendirme turu</p>
+                                <small>Rehberlik</small>
+                            </div>
+                            <div class="agenda-row">
+                                <time>14:00</time>
+                                <p>Haftalık kadro toplantısı</p>
+                                <small>Yönetim</small>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+            </div>
         </main>
-</div>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    const ctx = document.getElementById('academicChart');
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById("academicChart");
 
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['1. Deneme', '2. Deneme', '3. Deneme', '4. Deneme', '5. Deneme', '6. Deneme'],
-            datasets: [{
-                label: 'Genel Başarı',
-                data: [62, 68, 71, 76, 81, 86],
-                borderWidth: 3,
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-    responsive: true,
-    maintainAspectRatio: false,
-
-    plugins: {
-        legend: {
-            labels: {
-                color: "#c7d2fe"
-            }
-        }
-    },
-
-    scales: {
-        x: {
-            ticks: {
-                color: "#8b97b5"
+        new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: ["1. Deneme", "2. Deneme", "3. Deneme", "4. Deneme", "5. Deneme", "6. Deneme"],
+                datasets: [{
+                    label: "Genel başarı",
+                    data: [62, 68, 71, 76, 81, 86],
+                    borderWidth: 2.5,
+                    borderColor: "#1557a0",
+                    backgroundColor: "rgba(21, 87, 160, 0.08)",
+                    pointBackgroundColor: "#1557a0",
+                    pointRadius: 3.5,
+                    tension: 0.35,
+                    fill: true
+                }]
             },
-            grid: {
-                color: "rgba(255,255,255,.05)"
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#5a6475",
+                            font: { family: "Sora", size: 11 }
+                        },
+                        grid: {
+                            color: "rgba(215, 222, 232, 0.9)"
+                        }
+                    },
+                    y: {
+                        min: 50,
+                        max: 90,
+                        ticks: {
+                            color: "#5a6475",
+                            font: { family: "Sora", size: 11 }
+                        },
+                        grid: {
+                            color: "rgba(215, 222, 232, 0.9)"
+                        }
+                    }
+                }
             }
-        },
-        y: {
-            min: 50,
-            max: 90,
-            ticks: {
-                color: "#8b97b5"
-            },
-            grid: {
-                color: "rgba(255,255,255,.05)"
-            }
-        }
-    }
-     }
-});
-</script>
+        });
+    </script>
 </body>
 </html>
