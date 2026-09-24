@@ -1,0 +1,86 @@
+{% extends "panel_base.html" %}
+{% block title %}{{ etut.ad }} | Çinili Saray{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>Etüt · {{ talebeler|length }} talebe</small>
+        <h1>{{ etut.ad }}</h1>
+        <p class="welcome-text">
+            Kazanımlar geldikçe konular burada birikir.
+            Bir konuya tıklayınca etüt ortalamasını ve sınıf raporunu görürsün.
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'etut_panel' %}" class="action-btn secondary">← Etütler</a>
+        {% if secili_deneme %}
+        <a href="{% url 'deneme_sinif_raporu' secili_deneme.id %}" class="action-btn primary">Sınıf raporu</a>
+        {% endif %}
+    </div>
+</div>
+
+<section class="panel" style="margin-bottom:16px">
+    <h2>Deneme seç</h2>
+    <form method="get" class="form-grid" style="max-width:420px">
+        <div>
+            <label for="deneme">Deneme</label>
+            <select id="deneme" name="deneme" onchange="this.form.submit()" style="width:100%;height:48px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#111827;color:white;padding:0 14px;">
+                {% for d in denemeler %}
+                <option value="{{ d.id }}" {% if secili_deneme and d.id == secili_deneme.id %}selected{% endif %}>
+                    {{ d.ad }} · {{ d.tarih|date:"d.m.Y" }}
+                </option>
+                {% empty %}
+                <option value="">Deneme yok</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</section>
+
+<section class="panel" style="margin-bottom:16px">
+    <h2>Etüt talebeleri</h2>
+    <p class="muted" style="margin-bottom:12px">
+        {% for t in talebeler %}{{ t.ad_soyad }}{% if not forloop.last %}, {% endif %}{% empty %}Talebe yok{% endfor %}
+    </p>
+</section>
+
+<section class="panel">
+    <h2>
+        Konu ortalamaları
+        {% if secili_deneme %}<span class="badge">{{ secili_deneme.ad }}</span>{% endif %}
+    </h2>
+    {% if konu_ozeti %}
+    <table>
+        <thead>
+            <tr>
+                <th>Ders</th>
+                <th>Konu</th>
+                <th>Etüt ort.</th>
+                <th>Katılan</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in konu_ozeti %}
+            <tr>
+                <td>{{ row.ders }}</td>
+                <td>{{ row.konu }}</td>
+                <td>
+                    {% if row.ortalama is not None %}
+                        <strong>{{ row.ortalama }}%</strong>
+                    {% else %}—{% endif %}
+                </td>
+                <td>{{ row.talebe_sayisi }}</td>
+                <td>
+                    <a href="{% url 'etut_konu_detay' etut.id row.konu_id %}{% if secili_deneme %}?deneme={{ secili_deneme.id }}{% endif %}">
+                        Detay →
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Bu deneme için etüt talebelerinde konu sonucu yok.</p>
+    {% endif %}
+</section>
+{% endblock %}

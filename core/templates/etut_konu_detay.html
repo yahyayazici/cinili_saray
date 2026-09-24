@@ -1,0 +1,79 @@
+{% extends "panel_base.html" %}
+{% block title %}{{ konu.ad }} · {{ etut.ad }}{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>{{ konu.ders.ad }} · {{ deneme.ad }}</small>
+        <h1>{{ konu.ad }}</h1>
+        <p class="welcome-text">
+            Etütteki her talebenin bu konudaki sonucu, etüt ortalaması ve sınıf ortalaması.
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'etut_detay' etut.id %}?deneme={{ deneme.id }}" class="action-btn secondary">← Etüt</a>
+        <a href="{% url 'deneme_sinif_raporu' deneme.id %}{% if sinif %}?sinif={{ sinif.id }}{% endif %}" class="action-btn primary">Sınıf raporu</a>
+    </div>
+</div>
+
+<section class="stats">
+    <div class="card">
+        <small>Etüt ortalaması</small>
+        <strong>{% if etut_ortalama is not None %}{{ etut_ortalama }}%{% else %}—{% endif %}</strong>
+    </div>
+    <div class="card">
+        <small>Sınıf ortalaması{% if sinif %} · {{ sinif.ad }}{% endif %}</small>
+        <strong>{% if sinif_ortalama is not None %}{{ sinif_ortalama }}%{% else %}—{% endif %}</strong>
+    </div>
+    <div class="card">
+        <small>Etüt talebesi</small>
+        <strong>{{ satirlar|length }}</strong>
+    </div>
+    <div class="card">
+        <small>Deneme</small>
+        <strong style="font-size:16px;margin-top:18px">{{ deneme.tarih|date:"d.m.Y" }}</strong>
+    </div>
+</section>
+
+<section class="panel" style="margin-bottom:16px">
+    <h2>Deneme değiştir</h2>
+    <form method="get" style="max-width:420px">
+        <select name="deneme" onchange="this.form.submit()" style="width:100%;height:48px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#111827;color:white;padding:0 14px;">
+            {% for d in denemeler %}
+            <option value="{{ d.id }}" {% if d.id == deneme.id %}selected{% endif %}>
+                {{ d.ad }} · {{ d.tarih|date:"d.m.Y" }}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>Etüt talebe skorları</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Talebe</th>
+                <th>Sınıf</th>
+                <th>Yüzde</th>
+                <th>Net</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in satirlar %}
+            <tr>
+                <td>{{ row.talebe.ad_soyad }}</td>
+                <td><span class="badge">{{ row.talebe.sinif.ad }}</span></td>
+                <td>{% if row.yuzde is not None %}{{ row.yuzde }}%{% else %}<span class="muted">yok</span>{% endif %}</td>
+                <td>
+                    {% if row.net_dogru is not None and row.net_toplam is not None %}
+                        {{ row.net_dogru }}/{{ row.net_toplam }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="empty">Etütte talebe yok.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

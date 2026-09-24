@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.models import Deneme, Ders, Konu, KonuSonuc, Sinif, Talebe
+from core.models import Deneme, Ders, Etut, Konu, KonuSonuc, Sinif, Talebe
 
 
 @admin.register(Sinif)
@@ -39,3 +39,11 @@ class KonuSonucAdmin(admin.ModelAdmin):
     list_display = ("deneme", "talebe", "konu", "yuzde", "net_dogru", "net_toplam")
     list_filter = ("deneme", "konu__ders")
     search_fields = ("talebe__ad_soyad", "konu__ad")
+
+
+@admin.register(Etut)
+class EtutAdmin(admin.ModelAdmin):
+    list_display = ("ad", "hoca", "aktif", "olusturulma")
+    list_filter = ("aktif", "hoca")
+    search_fields = ("ad",)
+    filter_horizontal = ("talebeler",)

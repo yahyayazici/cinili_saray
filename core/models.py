@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -136,3 +137,31 @@ class KonuSonuc(models.Model):
 
     def __str__(self):
         return f"{self.talebe} · {self.konu} · {self.deneme}"
+
+
+class Etut(models.Model):
+    """Etüt grubu — hocanın takip ettiği talebe kümesi."""
+
+    ad = models.CharField(max_length=160)
+    hoca = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="etutler",
+        null=True,
+        blank=True,
+    )
+    talebeler = models.ManyToManyField(
+        Talebe,
+        related_name="etutler",
+        blank=True,
+    )
+    aktif = models.BooleanField(default=True)
+    olusturulma = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Etüt"
+        verbose_name_plural = "Etütler"
+        ordering = ["ad"]
+
+    def __str__(self):
+        return self.ad
