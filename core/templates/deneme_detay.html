@@ -1,0 +1,50 @@
+{% extends "panel_base.html" %}
+{% block title %}{{ deneme.ad }} | Çinili Saray{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>Akademik Takip · {{ deneme.tarih|date:"d.m.Y" }}</small>
+        <h1>{{ deneme.ad }}</h1>
+        <p class="welcome-text">
+            {{ talebe_gruplari|length }} talebe · {{ konu_sayisi }} konu · {{ sonuc_sayisi }} sonuç kaydı
+            {% if deneme.kaynak_dosya %} · {{ deneme.kaynak_dosya }}{% endif %}
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'akademik_takip' %}" class="action-btn secondary">← Liste</a>
+        <a href="{% url 'deneme_yukle' %}" class="action-btn primary">Yeni yükleme</a>
+    </div>
+</div>
+
+{% for grup in talebe_gruplari %}
+<section class="panel talebe-block">
+    <h3>{{ grup.talebe.ad_soyad }} <span class="badge">{{ grup.talebe.sinif.ad }}</span></h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Ders</th>
+                <th>Konu</th>
+                <th>Yüzde</th>
+                <th>Net</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in grup.satirlar %}
+            <tr>
+                <td>{{ s.konu.ders.ad }}</td>
+                <td>{{ s.konu.ad }}</td>
+                <td>{% if s.yuzde is not None %}{{ s.yuzde }}%{% else %}—{% endif %}</td>
+                <td>
+                    {% if s.net_dogru is not None and s.net_toplam is not None %}
+                        {{ s.net_dogru }}/{{ s.net_toplam }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% empty %}
+<section class="panel"><p class="empty">Bu denemede sonuç yok.</p></section>
+{% endfor %}
+{% endblock %}

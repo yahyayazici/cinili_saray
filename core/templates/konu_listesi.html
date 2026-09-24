@@ -1,0 +1,42 @@
+{% extends "panel_base.html" %}
+{% block title %}Konular | Çinili Saray{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>Akademik Takip</small>
+        <h1>Konu bankası</h1>
+        <p class="welcome-text">
+            Excel’lerden otomatik biriken konular. Aynı isim tekrar gelirse yeni kayıt açılmaz.
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'akademik_takip' %}" class="action-btn secondary">← Akademik Takip</a>
+    </div>
+</div>
+
+<section class="panel">
+    <h2>Kayıtlı konular ({{ konular|length }})</h2>
+    {% if konular %}
+    <table>
+        <thead>
+            <tr>
+                <th>Ders</th>
+                <th>Konu</th>
+                <th>Sonuç kaydı</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for k in konular %}
+            <tr>
+                <td>{{ k.ders.ad }}</td>
+                <td>{{ k.ad }}</td>
+                <td>{{ k.sonuc_sayisi }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Henüz konu yok. Bir deneme Excel’i yüklediğinde burada oluşur.</p>
+    {% endif %}
+</section>
+{% endblock %}

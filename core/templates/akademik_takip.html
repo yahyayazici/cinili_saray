@@ -1,0 +1,53 @@
+{% extends "panel_base.html" %}
+{% block title %}Akademik Takip | Çinili Saray{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>Akademik Takip</small>
+        <h1>Deneme konu kazanımları</h1>
+        <p class="welcome-text">
+            Her deneme için kutuktan indirdiğin KonuKazanimDetay Excel’ini yükle.
+            Aynı konular otomatik eşleşir, yeniler eklenir.
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'konu_listesi' %}" class="action-btn secondary">Konu listesi</a>
+        <a href="{% url 'deneme_yukle' %}" class="action-btn primary">Deneme yükle</a>
+    </div>
+</div>
+
+<section class="stats">
+    <div class="card"><small>Deneme</small><strong>{{ denemeler|length }}</strong></div>
+    <div class="card"><small>Talebe</small><strong>{{ talebe_sayisi }}</strong></div>
+    <div class="card"><small>Ders</small><strong>{{ ders_sayisi }}</strong></div>
+    <div class="card"><small>Konu</small><strong>{{ konu_sayisi }}</strong></div>
+</section>
+
+<section class="panel">
+    <h2>Yüklenen denemeler</h2>
+    {% if denemeler %}
+    <table>
+        <thead>
+            <tr>
+                <th>Deneme</th>
+                <th>Tarih</th>
+                <th>Sonuç kaydı</th>
+                <th>Dosya</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in denemeler %}
+            <tr>
+                <td><a href="{% url 'deneme_detay' d.id %}">{{ d.ad }}</a></td>
+                <td>{{ d.tarih|date:"d.m.Y" }}</td>
+                <td>{{ d.sonuc_sayisi }}</td>
+                <td class="muted">{{ d.kaynak_dosya|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Henüz deneme yok. İlk KonuKazanimDetay Excel’ini yükleyerek başla.</p>
+    {% endif %}
+</section>
+{% endblock %}
