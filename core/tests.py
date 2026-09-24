@@ -127,3 +127,18 @@ class EtutPanelTests(TestCase):
             f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/?sekme=kazanim"
         )
         self.assertContains(kazanim, "Detaylı kazanım")
+
+    def test_talebe_kutulari(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        talebe = self.etut.talebeler.first()
+        liste = client.get(f"/panel/etut/{self.etut.id}/talebeler/")
+        self.assertEqual(liste.status_code, 200)
+        self.assertContains(liste, talebe.ad_soyad)
+        detay = client.get(
+            f"/panel/etut/{self.etut.id}/talebe/{talebe.id}/"
+        )
+        self.assertEqual(detay.status_code, 200)
+        self.assertContains(detay, "Deneme puanları")
+        self.assertContains(detay, "Deneme kazanımları")
+        self.assertContains(detay, "Zayıf")

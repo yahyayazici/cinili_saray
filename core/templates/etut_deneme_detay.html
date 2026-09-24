@@ -41,7 +41,7 @@
             {% for row in siralama %}
             <tr>
                 <td>{{ row.sira }}</td>
-                <td>{{ row.ad_soyad }}</td>
+                <td><a href="{% url 'etut_talebe_detay' etut.id row.talebe_id %}">{{ row.ad_soyad }}</a></td>
                 <td><span class="badge">{{ row.sinif }}</span></td>
                 <td><strong>{% if row.ortalama %}{{ row.ortalama }}%{% else %}—{% endif %}</strong></td>
                 <td>{{ row.konu_sayisi }}</td>

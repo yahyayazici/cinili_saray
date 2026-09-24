@@ -1,0 +1,148 @@
+{% extends "panel_base.html" %}
+{% block title %}{{ talebe.ad_soyad }} · {{ etut.ad }}{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>{{ etut.ad }} · {{ talebe.sinif.ad }}</small>
+        <h1>{{ talebe.ad_soyad }}</h1>
+        <p class="welcome-text">
+            Deneme puan grafiği güncellenir; altta her denemenin kazanımları.
+            Zayıflar (%70 altı) kırmızı ve üstte.
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'etut_talebeler' etut.id %}" class="action-btn secondary">← Talebeler</a>
+        <a href="{% url 'etut_kontrol' etut.id %}" class="action-btn secondary">Etüt Kontrol</a>
+        <button type="button" class="action-btn primary" onclick="window.print()">Kazanım PDF / Yazdır</button>
+    </div>
+</div>
+
+<section class="stats">
+    <div class="card">
+        <small>Son ortalama</small>
+        <strong>{% if gelisim.son_ortalama %}{{ gelisim.son_ortalama }}%{% else %}—{% endif %}</strong>
+    </div>
+    <div class="card">
+        <small>Trend</small>
+        <strong>{{ gelisim.trend }}</strong>
+    </div>
+    <div class="card">
+        <small>Deneme</small>
+        <strong>{{ kutular|length }}</strong>
+    </div>
+    <div class="card">
+        <small>Sınıf</small>
+        <strong style="font-size:18px;margin-top:18px">{{ talebe.sinif.ad }}</strong>
+    </div>
+</section>
+
+<section class="panel" style="margin-bottom:18px">
+    <h2>Deneme puanları</h2>
+    <p class="muted" style="margin-bottom:12px;font-size:13px">Yeni deneme yüklendikçe çizgi uzar.</p>
+    <div style="height:240px"><canvas id="talebeChart"></canvas></div>
+</section>
+
+<section>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h2 style="font-size:18px">Deneme kazanımları</h2>
+        <span class="muted" style="font-size:12px">Zayıflar öne alınır</span>
+    </div>
+
+    {% for k in kutular %}
+    <section class="panel talebe-block" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+            <div>
+                <h3 style="margin:0">{{ k.deneme.ad }}</h3>
+                <div class="muted" style="font-size:12px;margin-top:4px">{{ k.deneme.tarih|date:"d.m.Y" }} · {{ k.konu_sayisi }} konu</div>
+            </div>
+            <div style="text-align:right">
+                <span class="badge">{{ k.trend }}</span>
+                <div style="font-size:22px;font-weight:700;margin-top:6px">
+                    {% if k.ortalama %}{{ k.ortalama }}%{% else %}—{% endif %}
+                </div>
+                {% if k.zayif_sayisi %}
+                <div style="font-size:12px;color:#ffb0b0;margin-top:4px">{{ k.zayif_sayisi }} zayıf</div>
+                {% else %}
+                <div style="font-size:12px;color:#9be7cb;margin-top:4px">Zayıf yok</div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if k.zayiflar %}
+        <div style="margin-bottom:12px;padding:12px;border:1px solid rgba(255,100,100,.2);border-radius:12px;background:rgba(255,100,100,.06)">
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#ffb0b0;margin-bottom:8px">Öncelikli zayıf kazanımlar</div>
+            {% for z in k.zayiflar %}
+            <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0">
+                <span>{{ z.konu }} <span class="muted">({{ z.ders }})</span></span>
+                <strong style="color:#ffb0b0">{{ z.yuzde }}%</strong>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <details>
+            <summary style="cursor:pointer;color:#a9c6ff;font-size:13px;margin-bottom:8px">Tüm kazanımlar</summary>
+            <table>
+                <thead>
+                    <tr><th>Ders</th><th>Kazanım</th><th>Yüzde</th><th>Net</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in k.kazanimlar %}
+                    <tr>
+                        <td>{{ row.ders }}</td>
+                        <td>{{ row.konu }}</td>
+                        <td style="color:{% if row.zayif %}#ffb0b0{% else %}#9be7cb{% endif %}">
+                            {% if row.yuzde is not None %}{{ row.yuzde }}%{% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if row.net_dogru is not None and row.net_toplam is not None %}
+                                {{ row.net_dogru }}/{{ row.net_toplam }}
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    </section>
+    {% empty %}
+    <section class="panel"><p class="empty">Bu talebenin deneme sonucu yok.</p></section>
+    {% endfor %}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const data = {{ gelisim_json|safe }};
+const ctx = document.getElementById('talebeChart');
+if (ctx && data.labels && data.labels.length) {
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels.map((l, i) => (i + 1) + '.'),
+      datasets: [{
+        label: 'Deneme ort.',
+        data: data.puanlar,
+        borderColor: '#7aa7ff',
+        backgroundColor: 'rgba(122,167,255,.12)',
+        tension: 0.35,
+        fill: true,
+        borderWidth: 2.5,
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#c7d2fe' } },
+        tooltip: { callbacks: { title: (items) => data.labels[items[0].dataIndex] || '' } }
+      },
+      scales: {
+        x: { ticks: { color: '#8b97b5' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { min: 40, max: 100, ticks: { color: '#8b97b5' }, grid: { color: 'rgba(255,255,255,.05)' } }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -14,6 +14,8 @@ from core.views import (
     etut_detay,
     etut_deneme_detay,
     etut_konu_detay,
+    etut_talebeler,
+    etut_talebe_detay,
 )
 
 urlpatterns = [
@@ -41,6 +43,16 @@ urlpatterns = [
         "panel/etut/<int:etut_id>/konu/<int:konu_id>/",
         etut_konu_detay,
         name="etut_konu_detay",
+    ),
+    path(
+        "panel/etut/<int:etut_id>/talebeler/",
+        etut_talebeler,
+        name="etut_talebeler",
+    ),
+    path(
+        "panel/etut/<int:etut_id>/talebe/<int:talebe_id>/",
+        etut_talebe_detay,
+        name="etut_talebe_detay",
     ),
     path("admin/", admin.site.urls),
 ]

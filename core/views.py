@@ -16,8 +16,11 @@ from core.etut_stats import (
     etut_gelisim_serisi,
     etut_konu_ozeti,
     etut_konu_talebe_satirlari,
+    etut_talebe_kutulari,
     sinif_konu_karsilastirma,
     sinif_raporu,
+    talebe_deneme_kutulari,
+    talebe_gelisim_serisi,
 )
 from core.models import Deneme, Ders, Etut, Konu, KonuSonuc, Sinif, Talebe
 
@@ -288,6 +291,51 @@ def deneme_ortalama_safe(etut, deneme, sinif=None):
 @login_required(login_url="login")
 def etut_detay(request, etut_id):
     return redirect("etut_kontrol", etut_id=etut_id)
+
+
+@login_required(login_url="login")
+def etut_talebeler(request, etut_id):
+    """Etüt talebe kutuları."""
+    etut = get_object_or_404(Etut, pk=etut_id)
+    kutular = etut_talebe_kutulari(etut)
+    return render(
+        request,
+        "etut_talebeler.html",
+        {
+            "etut": etut,
+            "kutular": kutular,
+        },
+    )
+
+
+@login_required(login_url="login")
+def etut_talebe_detay(request, etut_id, talebe_id):
+    """Talebe dosyası: puan grafiği + deneme kazanım kutuları."""
+    etut = get_object_or_404(Etut, pk=etut_id)
+    talebe = get_object_or_404(Talebe.objects.select_related("sinif"), pk=talebe_id)
+    if not etut.talebeler.filter(pk=talebe.id).exists():
+        messages.error(request, "Bu talebe seçili etütte değil.")
+        return redirect("etut_talebeler", etut_id=etut.id)
+
+    gelisim = talebe_gelisim_serisi(talebe)
+    kutular = talebe_deneme_kutulari(talebe)
+    return render(
+        request,
+        "etut_talebe_detay.html",
+        {
+            "etut": etut,
+            "talebe": talebe,
+            "gelisim": gelisim,
+            "kutular": kutular,
+            "gelisim_json": json.dumps(
+                {
+                    "labels": gelisim["labels"],
+                    "puanlar": gelisim["puanlar"],
+                },
+                ensure_ascii=False,
+            ),
+        },
+    )
 
 
 @login_required(login_url="login")

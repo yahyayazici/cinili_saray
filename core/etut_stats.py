@@ -374,3 +374,114 @@ def etut_deneme_siralamasi(etut, deneme: Deneme) -> list[dict]:
             }
         )
     return sonuc
+
+
+def talebe_gelisim_serisi(talebe: Talebe) -> dict:
+    """Talebenin deneme deneme genel ortalaması."""
+    denemeler = list(Deneme.objects.order_by("tarih", "id"))
+    labels = []
+    values: list[float | None] = []
+    for deneme in denemeler:
+        labels.append(deneme.ad)
+        avg = deneme_ortalama(deneme, [talebe.id])
+        values.append(float(avg) if avg is not None else None)
+    return {
+        "labels": labels,
+        "puanlar": values,
+        "trend": _trend(values),
+        "son_ortalama": _avg_or_none(values[-1]) if values and values[-1] is not None else None,
+    }
+
+
+def talebe_deneme_kazanimlari(talebe: Talebe, deneme: Deneme) -> list[dict]:
+    """Bir denemede talebenin konu sonuçları; zayıflar önde."""
+    rows = list(
+        KonuSonuc.objects.filter(talebe=talebe, deneme=deneme)
+        .select_related("konu", "konu__ders")
+        .order_by("konu__ders__ad", "konu__ad")
+    )
+    sonuc = []
+    for row in rows:
+        zayif = row.yuzde is not None and row.yuzde < ZAYIF_ESIK
+        sonuc.append(
+            {
+                "konu_id": row.konu_id,
+                "ders": row.konu.ders.ad,
+                "konu": row.konu.ad,
+                "yuzde": row.yuzde,
+                "net_dogru": row.net_dogru,
+                "net_toplam": row.net_toplam,
+                "zayif": zayif,
+            }
+        )
+    sonuc.sort(key=lambda r: (not r["zayif"], float(r["yuzde"] or 999)))
+    return sonuc
+
+
+def talebe_deneme_kutulari(talebe: Talebe) -> list[dict]:
+    """Talebe detayında alt deneme kutuları."""
+    krono = list(Deneme.objects.order_by("tarih", "id"))
+    series = [deneme_ortalama(d, [talebe.id]) for d in krono]
+    by_id = {
+        d.id: (
+            float(series[i]) if series[i] is not None else None,
+            float(series[i - 1]) if i and series[i - 1] is not None else None,
+        )
+        for i, d in enumerate(krono)
+    }
+
+    kutular = []
+    for deneme in Deneme.objects.order_by("-tarih", "-id"):
+        if not KonuSonuc.objects.filter(talebe=talebe, deneme=deneme).exists():
+            continue
+        kazanimlar = talebe_deneme_kazanimlari(talebe, deneme)
+        zayiflar = [k for k in kazanimlar if k["zayif"]]
+        cur, prev = by_id.get(deneme.id, (None, None))
+        if cur is None or prev is None:
+            trend = "→"
+        elif cur - prev >= 1.5:
+            trend = "↑"
+        elif cur - prev <= -1.5:
+            trend = "↓"
+        else:
+            trend = "→"
+        kutular.append(
+            {
+                "deneme": deneme,
+                "ortalama": deneme_ortalama(deneme, [talebe.id]),
+                "trend": trend,
+                "kazanimlar": kazanimlar,
+                "zayiflar": zayiflar[:6],
+                "zayif_sayisi": len(zayiflar),
+                "konu_sayisi": len(kazanimlar),
+            }
+        )
+    return kutular
+
+
+def etut_talebe_kutulari(etut) -> list[dict]:
+    """Etüt talebe galerisi."""
+    son_deneme = Deneme.objects.order_by("-tarih", "-id").first()
+    kutular = []
+    for talebe in etut.talebeler.select_related("sinif").order_by("ad_soyad"):
+        gelisim = talebe_gelisim_serisi(talebe)
+        son = gelisim["son_ortalama"]
+        zayif_sayisi = 0
+        if son_deneme:
+            zayif_sayisi = sum(
+                1
+                for k in talebe_deneme_kazanimlari(talebe, son_deneme)
+                if k["zayif"]
+            )
+        kutular.append(
+            {
+                "talebe": talebe,
+                "son_ortalama": son,
+                "trend": gelisim["trend"],
+                "zayif_sayisi": zayif_sayisi,
+                "deneme_sayisi": sum(
+                    1 for v in gelisim["puanlar"] if v is not None
+                ),
+            }
+        )
+    return kutular
