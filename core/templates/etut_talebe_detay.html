@@ -13,7 +13,8 @@
     <div class="top-actions">
         <a href="{% url 'etut_talebeler' etut.id %}" class="action-btn secondary">← Talebeler</a>
         <a href="{% url 'etut_kontrol' etut.id %}" class="action-btn secondary">Etüt Kontrol</a>
-        <button type="button" class="action-btn primary" onclick="window.print()">Kazanım PDF / Yazdır</button>
+        <a href="?indir=excel" class="action-btn secondary">Excel indir</a>
+        <a href="?indir=pdf" class="action-btn primary">Kazanım PDF</a>
     </div>
 </div>
 

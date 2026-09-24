@@ -142,3 +142,37 @@ class EtutPanelTests(TestCase):
         self.assertContains(detay, "Deneme puanları")
         self.assertContains(detay, "Deneme kazanımları")
         self.assertContains(detay, "Zayıf")
+
+    def test_pdf_excel_downloads(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        talebe = self.etut.talebeler.first()
+
+        siralama_xlsx = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/?indir=excel"
+        )
+        self.assertEqual(siralama_xlsx.status_code, 200)
+        self.assertIn(
+            "spreadsheetml",
+            siralama_xlsx["Content-Type"],
+        )
+
+        kazanim_pdf = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/"
+            f"?sekme=kazanim&indir=pdf"
+        )
+        self.assertEqual(kazanim_pdf.status_code, 200)
+        self.assertEqual(kazanim_pdf["Content-Type"], "application/pdf")
+        self.assertTrue(kazanim_pdf.content.startswith(b"%PDF"))
+
+        talebe_pdf = client.get(
+            f"/panel/etut/{self.etut.id}/talebe/{talebe.id}/?indir=pdf"
+        )
+        self.assertEqual(talebe_pdf.status_code, 200)
+        self.assertTrue(talebe_pdf.content.startswith(b"%PDF"))
+
+        sinif_xlsx = client.get(
+            f"/panel/akademik/deneme/{self.deneme.id}/sinif/?indir=excel"
+        )
+        self.assertEqual(sinif_xlsx.status_code, 200)
+        self.assertIn("spreadsheetml", sinif_xlsx["Content-Type"])

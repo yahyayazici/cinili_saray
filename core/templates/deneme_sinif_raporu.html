@@ -12,6 +12,8 @@
     </div>
     <div class="top-actions">
         <a href="{% url 'deneme_detay' deneme.id %}" class="action-btn secondary">Talebe detay</a>
+        <a href="?{% if secili_sinif %}sinif={{ secili_sinif.id }}&{% endif %}indir=excel" class="action-btn secondary">Excel indir</a>
+        <a href="?{% if secili_sinif %}sinif={{ secili_sinif.id }}&{% endif %}indir=pdf" class="action-btn primary">PDF indir</a>
         <a href="{% url 'akademik_takip' %}" class="action-btn secondary">← Liste</a>
     </div>
 </div>

@@ -8,6 +8,16 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.kazanim_import import import_kazanim_excel
+from core.exports import (
+    excel_kazanim,
+    excel_sinif_raporu,
+    excel_siralama,
+    excel_talebe_kazanim,
+    pdf_kazanim,
+    pdf_sinif_raporu,
+    pdf_siralama,
+    pdf_talebe_kazanim,
+)
 from core.etut_stats import (
     etut_baskin_sinif,
     etut_deneme_kutulari,
@@ -258,6 +268,17 @@ def etut_deneme_detay(request, etut_id, deneme_id):
     siralama = etut_deneme_siralamasi(etut, deneme)
     kazanimlar = etut_konu_ozeti(etut, deneme=deneme)
     sinif = etut_baskin_sinif(etut)
+
+    indir = request.GET.get("indir")
+    if indir == "excel":
+        if sekme == "kazanim":
+            return excel_kazanim(etut, deneme, kazanimlar)
+        return excel_siralama(etut, deneme, siralama)
+    if indir == "pdf":
+        if sekme == "kazanim":
+            return pdf_kazanim(etut, deneme, kazanimlar)
+        return pdf_siralama(etut, deneme, siralama)
+
     return render(
         request,
         "etut_deneme_detay.html",
@@ -319,6 +340,13 @@ def etut_talebe_detay(request, etut_id, talebe_id):
 
     gelisim = talebe_gelisim_serisi(talebe)
     kutular = talebe_deneme_kutulari(talebe)
+
+    indir = request.GET.get("indir")
+    if indir == "pdf":
+        return pdf_talebe_kazanim(etut, talebe, kutular)
+    if indir == "excel":
+        return excel_talebe_kazanim(talebe, kutular)
+
     return render(
         request,
         "etut_talebe_detay.html",
@@ -395,6 +423,13 @@ def deneme_sinif_raporu(request, deneme_id):
         sinif = siniflar.first()
 
     rapor = sinif_raporu(deneme, sinif=sinif)
+
+    indir = request.GET.get("indir")
+    if indir == "excel":
+        return excel_sinif_raporu(deneme, sinif, rapor)
+    if indir == "pdf":
+        return pdf_sinif_raporu(deneme, sinif, rapor)
+
     return render(
         request,
         "deneme_sinif_raporu.html",

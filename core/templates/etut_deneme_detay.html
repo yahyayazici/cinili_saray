@@ -14,7 +14,8 @@
     <div class="top-actions">
         <a href="{% url 'etut_kontrol' etut.id %}" class="action-btn secondary">← Etüt Kontrol</a>
         <a href="{% url 'deneme_sinif_raporu' deneme.id %}{% if sinif %}?sinif={{ sinif.id }}{% endif %}" class="action-btn secondary">Sınıf raporu</a>
-        <button type="button" class="action-btn primary" onclick="window.print()">PDF / Yazdır</button>
+        <a href="?sekme={{ sekme }}&indir=excel" class="action-btn secondary">Excel indir</a>
+        <a href="?sekme={{ sekme }}&indir=pdf" class="action-btn primary">PDF indir</a>
     </div>
 </div>
 
