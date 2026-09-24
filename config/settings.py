@@ -29,6 +29,13 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".onrender.com",
+    ".loca.lt",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.loca.lt",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
 ]
 
 
