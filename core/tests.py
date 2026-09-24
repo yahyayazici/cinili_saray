@@ -4,8 +4,9 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
+from core.etut_stats import etut_konu_ozeti, etut_konu_talebe_satirlari, sinif_raporu
 from core.kazanim_import import import_kazanim_excel
-from core.models import Deneme, Ders, Konu, KonuSonuc, Talebe
+from core.models import Deneme, Ders, Etut, Konu, KonuSonuc, Talebe
 
 SAMPLE = Path(
     "/home/ubuntu/.cursor/projects/workspace/uploads/"
@@ -68,3 +69,43 @@ class KazanimImportTests(TestCase):
         self.assertEqual(Deneme.objects.count(), 1)
         deneme = Deneme.objects.get()
         self.assertEqual(deneme.ad, "KTT-1")
+
+
+class EtutPanelTests(TestCase):
+    def setUp(self):
+        with SAMPLE.open("rb") as fh:
+            stats = import_kazanim_excel(
+                fh,
+                deneme_adi="Etüt Deneme",
+                deneme_tarihi=date(2026, 9, 23),
+            )
+        self.deneme = Deneme.objects.get(pk=stats.deneme_id)
+        self.user = get_user_model().objects.create_user("hoca", password="hoca123")
+        self.etut = Etut.objects.create(ad="Test Etüt", hoca=self.user)
+        self.etut.talebeler.set(Talebe.objects.all()[:5])
+        self.konu = Konu.objects.filter(ad__icontains="SÖZCÜKTE").first()
+        self.assertIsNotNone(self.konu)
+
+    def test_etut_average_and_class_report(self):
+        ozet = etut_konu_ozeti(self.etut, deneme=self.deneme)
+        self.assertTrue(any(r["konu_id"] == self.konu.id for r in ozet))
+        satirlar, ortalama = etut_konu_talebe_satirlari(
+            self.etut, self.konu, self.deneme
+        )
+        self.assertEqual(len(satirlar), 5)
+        self.assertIsNotNone(ortalama)
+        rapor = sinif_raporu(self.deneme)
+        self.assertTrue(any(r["konu_id"] == self.konu.id for r in rapor))
+
+    def test_etut_konu_page(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        url = (
+            f"/panel/etut/{self.etut.id}/konu/{self.konu.id}/"
+            f"?deneme={self.deneme.id}"
+        )
+        resp = client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Etüt ortalaması")
+        self.assertContains(resp, "Sınıf ortalaması")
+        self.assertContains(resp, "SÖZCÜKTE ANLAM")
