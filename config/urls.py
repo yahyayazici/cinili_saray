@@ -10,7 +10,9 @@ from core.views import (
     deneme_sinif_raporu,
     konu_listesi,
     etut_panel,
+    etut_kontrol,
     etut_detay,
+    etut_deneme_detay,
     etut_konu_detay,
 )
 
@@ -28,7 +30,13 @@ urlpatterns = [
     ),
     path("panel/akademik/konular/", konu_listesi, name="konu_listesi"),
     path("panel/etut/", etut_panel, name="etut_panel"),
-    path("panel/etut/<int:etut_id>/", etut_detay, name="etut_detay"),
+    path("panel/etut/<int:etut_id>/", etut_kontrol, name="etut_kontrol"),
+    path("panel/etut/<int:etut_id>/eski/", etut_detay, name="etut_detay"),
+    path(
+        "panel/etut/<int:etut_id>/deneme/<int:deneme_id>/",
+        etut_deneme_detay,
+        name="etut_deneme_detay",
+    ),
     path(
         "panel/etut/<int:etut_id>/konu/<int:konu_id>/",
         etut_konu_detay,

@@ -8,6 +8,8 @@ from django.db.models import Avg, Count, QuerySet
 
 from core.models import Deneme, Konu, KonuSonuc, Sinif, Talebe
 
+ZAYIF_ESIK = Decimal("70")
+
 
 def _avg_or_none(value) -> Decimal | None:
     if value is None:
@@ -15,12 +17,20 @@ def _avg_or_none(value) -> Decimal | None:
     return Decimal(str(round(float(value), 2)))
 
 
-def etut_konu_ozeti(etut, deneme: Deneme | None = None) -> list[dict]:
-    """Etütteki talebelerin konu bazlı ortalamaları.
+def _trend(values: list[float | None]) -> str:
+    clean = [v for v in values if v is not None]
+    if len(clean) < 2:
+        return "→"
+    delta = clean[-1] - clean[-2]
+    if delta >= 1.5:
+        return "↑"
+    if delta <= -1.5:
+        return "↓"
+    return "→"
 
-    Kazanım Excel'lerinden gelen konular burada listelenir.
-    deneme verilirse sadece o denemeye bakar; yoksa tüm denemelerin ortalaması.
-    """
+
+def etut_konu_ozeti(etut, deneme: Deneme | None = None) -> list[dict]:
+    """Etütteki talebelerin konu bazlı ortalamaları."""
     talebe_ids = list(etut.talebeler.values_list("id", flat=True))
     if not talebe_ids:
         return []
@@ -50,6 +60,10 @@ def etut_konu_ozeti(etut, deneme: Deneme | None = None) -> list[dict]:
             "ortalama": _avg_or_none(row["ortalama"]),
             "katilim": row["katilim"],
             "talebe_sayisi": row["talebe_sayisi"],
+            "zayif": (
+                row["ortalama"] is not None
+                and Decimal(str(row["ortalama"])) < ZAYIF_ESIK
+            ),
         }
         for row in rows
     ]
@@ -59,7 +73,7 @@ def etut_konu_talebe_satirlari(
     etut,
     konu: Konu,
     deneme: Deneme,
-) -> list[dict]:
+) -> tuple[list[dict], Decimal | None]:
     """Seçili denemede etüt talebelerinin konu skorları."""
     talebe_ids = list(etut.talebeler.values_list("id", flat=True))
     sonuclar = {
@@ -117,6 +131,10 @@ def sinif_raporu(deneme: Deneme, sinif: Sinif | None = None) -> list[dict]:
             "konu": row["konu__ad"],
             "ortalama": _avg_or_none(row["ortalama"]),
             "talebe_sayisi": row["talebe_sayisi"],
+            "zayif": (
+                row["ortalama"] is not None
+                and Decimal(str(row["ortalama"])) < ZAYIF_ESIK
+            ),
         }
         for row in rows
     ]
@@ -146,7 +164,6 @@ def sinif_konu_karsilastirma(
     if sinif is not None:
         sinif_qs = sinif_qs.filter(talebe__sinif=sinif)
     else:
-        # Etütteki talebelerin sınıflarına bak
         sinif_ids = (
             Talebe.objects.filter(id__in=talebe_ids)
             .values_list("sinif_id", flat=True)
@@ -159,3 +176,201 @@ def sinif_konu_karsilastirma(
         "etut_ortalama": _avg_or_none(etut_avg),
         "sinif_ortalama": _avg_or_none(sinif_avg),
     }
+
+
+def etut_baskin_sinif(etut) -> Sinif | None:
+    sinif_id = (
+        etut.talebeler.values_list("sinif_id", flat=True).order_by().first()
+    )
+    if not sinif_id:
+        return None
+    return Sinif.objects.filter(pk=sinif_id).first()
+
+
+def deneme_ortalama(
+    deneme: Deneme, talebe_ids: list[int] | None = None
+) -> Decimal | None:
+    qs = KonuSonuc.objects.filter(deneme=deneme, yuzde__isnull=False)
+    if talebe_ids is not None:
+        qs = qs.filter(talebe_id__in=talebe_ids)
+    return _avg_or_none(qs.aggregate(v=Avg("yuzde"))["v"])
+
+
+def etut_gelisim_serisi(etut) -> dict:
+    """Deneme deneme etüt + sınıf ortalama çizgisi."""
+    talebe_ids = list(etut.talebeler.values_list("id", flat=True))
+    sinif = etut_baskin_sinif(etut)
+    denemeler = list(Deneme.objects.order_by("tarih", "id"))
+
+    labels = []
+    etut_vals: list[float | None] = []
+    sinif_vals: list[float | None] = []
+
+    for deneme in denemeler:
+        labels.append(deneme.ad)
+        eavg = deneme_ortalama(deneme, talebe_ids)
+        etut_vals.append(float(eavg) if eavg is not None else None)
+        if sinif:
+            savg = deneme_ortalama(
+                deneme,
+                list(
+                    Talebe.objects.filter(sinif=sinif).values_list(
+                        "id", flat=True
+                    )
+                ),
+            )
+            sinif_vals.append(float(savg) if savg is not None else None)
+        else:
+            sinif_vals.append(None)
+
+    return {
+        "labels": labels,
+        "etut": etut_vals,
+        "sinif": sinif_vals,
+        "sinif_ad": sinif.ad if sinif else None,
+        "trend": _trend(etut_vals),
+    }
+
+
+def etut_deneme_kutulari(etut) -> list[dict]:
+    """Denemelerim sayfası için kutu verisi."""
+    talebe_ids = list(etut.talebeler.values_list("id", flat=True))
+    sinif = etut_baskin_sinif(etut)
+    sinif_ids = (
+        list(Talebe.objects.filter(sinif=sinif).values_list("id", flat=True))
+        if sinif
+        else []
+    )
+
+    krono = list(Deneme.objects.order_by("tarih", "id"))
+    etut_series = [deneme_ortalama(d, talebe_ids) for d in krono]
+    series_by_id = {
+        d.id: (
+            float(etut_series[i]) if etut_series[i] is not None else None,
+            float(etut_series[i - 1])
+            if i and etut_series[i - 1] is not None
+            else None,
+        )
+        for i, d in enumerate(krono)
+    }
+
+    kutular = []
+    for deneme in Deneme.objects.order_by("-tarih", "-id"):
+        etut_ort = deneme_ortalama(deneme, talebe_ids)
+        sinif_ort = deneme_ortalama(deneme, sinif_ids) if sinif_ids else None
+        cur, prev = series_by_id.get(deneme.id, (None, None))
+        if cur is None or prev is None:
+            trend = "→"
+        elif cur - prev >= 1.5:
+            trend = "↑"
+        elif cur - prev <= -1.5:
+            trend = "↓"
+        else:
+            trend = "→"
+
+        zayif_sayisi = sum(
+            1 for row in etut_konu_ozeti(etut, deneme=deneme) if row.get("zayif")
+        )
+
+        kutular.append(
+            {
+                "deneme": deneme,
+                "etut_ortalama": etut_ort,
+                "sinif_ortalama": sinif_ort,
+                "trend": trend,
+                "zayif_konu": zayif_sayisi,
+            }
+        )
+    return kutular
+
+
+def etut_dikkat(etut, limit: int = 5) -> dict:
+    """Hocanın bakması gereken kısa uyarı listeleri."""
+    deneme = Deneme.objects.order_by("-tarih", "-id").first()
+    if deneme is None:
+        return {"zayif_konular": [], "dusen_talebeler": [], "deneme": None}
+
+    sinif = etut_baskin_sinif(etut)
+    zayif = []
+    for row in etut_konu_ozeti(etut, deneme=deneme):
+        if row["ortalama"] is None:
+            continue
+        kars = sinif_konu_karsilastirma(
+            deneme,
+            Konu.objects.get(pk=row["konu_id"]),
+            etut,
+            sinif=sinif,
+        )
+        etut_o = kars["etut_ortalama"]
+        sinif_o = kars["sinif_ortalama"]
+        fark = None
+        if etut_o is not None and sinif_o is not None:
+            fark = etut_o - sinif_o
+        if row["zayif"] or (fark is not None and fark <= -5):
+            zayif.append(
+                {
+                    **row,
+                    "sinif_ortalama": sinif_o,
+                    "fark": fark,
+                }
+            )
+    zayif.sort(key=lambda r: float(r["ortalama"]))
+    zayif = zayif[:limit]
+
+    son_iki = list(Deneme.objects.order_by("-tarih", "-id")[:2])
+    dusen = []
+    if len(son_iki) == 2:
+        yeni, eski = son_iki[0], son_iki[1]
+        for talebe in etut.talebeler.select_related("sinif"):
+            y = deneme_ortalama(yeni, [talebe.id])
+            e = deneme_ortalama(eski, [talebe.id])
+            if y is None or e is None:
+                continue
+            if float(y) <= float(e) - 3:
+                dusen.append(
+                    {
+                        "talebe": talebe,
+                        "eski": e,
+                        "yeni": y,
+                        "delta": _avg_or_none(float(y) - float(e)),
+                    }
+                )
+        dusen.sort(key=lambda r: float(r["delta"]))
+        dusen = dusen[:limit]
+
+    return {
+        "deneme": deneme,
+        "zayif_konular": zayif,
+        "dusen_talebeler": dusen,
+    }
+
+
+def etut_deneme_siralamasi(etut, deneme: Deneme) -> list[dict]:
+    """Deneme genel sıralaması (talebe ortalama yüzde)."""
+    talebe_ids = list(etut.talebeler.values_list("id", flat=True))
+    rows = (
+        KonuSonuc.objects.filter(
+            deneme=deneme,
+            talebe_id__in=talebe_ids,
+            yuzde__isnull=False,
+        )
+        .values("talebe_id", "talebe__ad_soyad", "talebe__sinif__ad")
+        .annotate(
+            ortalama=Avg("yuzde"),
+            konu_sayisi=Count("konu_id", distinct=True),
+        )
+        .order_by("-ortalama")
+    )
+    sonuc = []
+    for i, row in enumerate(rows, start=1):
+        sonuc.append(
+            {
+                "sira": i,
+                "talebe_id": row["talebe_id"],
+                "ad_soyad": row["talebe__ad_soyad"],
+                "sinif": row["talebe__sinif__ad"],
+                "ortalama": _avg_or_none(row["ortalama"]),
+                "konu_sayisi": row["konu_sayisi"],
+            }
+        )
+    return sonuc

@@ -62,8 +62,8 @@
         <div class="brand">ÇİNİLİ SARAY</div>
         <div class="menu">
             <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Ana Panel</a>
-            <a href="{% url 'etut_panel' %}" class="{% if 'etut' in request.resolver_match.url_name %}active{% endif %}">Etüt Paneli</a>
-            <a href="{% url 'akademik_takip' %}" class="{% if request.resolver_match.url_name == 'akademik_takip' or request.resolver_match.url_name == 'deneme_yukle' or request.resolver_match.url_name == 'deneme_detay' or request.resolver_match.url_name == 'deneme_sinif_raporu' or request.resolver_match.url_name == 'konu_listesi' %}active{% endif %}">Akademik Takip</a>
+            <a href="{% url 'etut_panel' %}" class="{% if request.resolver_match.url_name == 'etut_panel' or request.resolver_match.url_name == 'etut_kontrol' or request.resolver_match.url_name == 'etut_deneme_detay' or request.resolver_match.url_name == 'etut_konu_detay' %}active{% endif %}">Etüt Kontrol</a>
+            <a href="{% url 'akademik_takip' %}" class="{% if request.resolver_match.url_name == 'akademik_takip' or request.resolver_match.url_name == 'deneme_yukle' or request.resolver_match.url_name == 'deneme_detay' or request.resolver_match.url_name == 'deneme_sinif_raporu' or request.resolver_match.url_name == 'konu_listesi' %}active{% endif %}">Akademik Yükle</a>
             <a href="{% url 'konu_listesi' %}" class="{% if request.resolver_match.url_name == 'konu_listesi' %}active{% endif %}">Konular</a>
             <a href="{% url 'etut_panel' %}">Talebeler</a>
             <a href="#">Sınavlar</a>

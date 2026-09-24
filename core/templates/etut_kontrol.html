@@ -1,0 +1,198 @@
+{% extends "panel_base.html" %}
+{% block title %}Etüt Kontrol | {{ etut.ad|default:"Etüt" }}{% endblock %}
+{% block content %}
+{% if not etut %}
+<div class="topbar">
+    <div>
+        <small>Etüt hocası</small>
+        <h1>Etüt Kontrol</h1>
+        <p class="welcome-text">Henüz etüt yok. Admin’den etüt oluşturup talebe ekleyin.</p>
+    </div>
+</div>
+{% else %}
+<div class="topbar">
+    <div>
+        <small>Etüt Kontrol · {{ talebe_sayisi }} talebe</small>
+        <h1>{{ etut.ad }}</h1>
+        <p class="welcome-text">
+            Gelişim grafiği, dikkat listesi ve deneme kutuları — günlük kullanım buradan.
+        </p>
+    </div>
+    <div class="top-actions">
+        {% if etutler|length > 1 %}
+        <form method="get" action="{% url 'etut_panel' %}">
+            <select name="etut" onchange="this.form.submit()" style="height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#111827;color:white;padding:0 12px;">
+                {% for e in etutler %}
+                <option value="{{ e.id }}" {% if e.id == etut.id %}selected{% endif %}>{{ e.ad }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<section class="panel" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px">
+        <h2 style="margin:0">Gelişim</h2>
+        <span class="badge">Trend {{ gelisim.trend }}</span>
+    </div>
+    <p class="muted" style="margin-bottom:14px;font-size:13px">
+        Deneme eklendikçe çizgi uzar. Mavi: etüt ort. · Gri: sınıf ort.
+        {% if gelisim.sinif_ad %}({{ gelisim.sinif_ad }}){% endif %}
+    </p>
+    <div style="height:260px">
+        <canvas id="gelisimChart"></canvas>
+    </div>
+</section>
+
+<section class="panel" style="margin-bottom:16px">
+    <h2>Dikkat
+        {% if dikkat.deneme %}<span class="badge">{{ dikkat.deneme.ad }}</span>{% endif %}
+    </h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div>
+            <h3 style="font-size:13px;color:#8d98ad;margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase">Zayıf / geride konular</h3>
+            {% if dikkat.zayif_konular %}
+            <table>
+                <thead><tr><th>Konu</th><th>Etüt</th><th>Sınıf</th></tr></thead>
+                <tbody>
+                {% for row in dikkat.zayif_konular %}
+                <tr>
+                    <td>
+                        <a href="{% url 'etut_konu_detay' etut.id row.konu_id %}{% if dikkat.deneme %}?deneme={{ dikkat.deneme.id }}{% endif %}">
+                            {{ row.konu }}
+                        </a>
+                        <div class="muted" style="font-size:11px">{{ row.ders }}</div>
+                    </td>
+                    <td style="color:{% if row.zayif %}#ffb0b0{% else %}#fff{% endif %}">{{ row.ortalama }}%</td>
+                    <td>{% if row.sinif_ortalama %}{{ row.sinif_ortalama }}%{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty">Kritik zayıf konu yok.</p>
+            {% endif %}
+        </div>
+        <div>
+            <h3 style="font-size:13px;color:#8d98ad;margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase">Düşüşteki talebeler</h3>
+            {% if dikkat.dusen_talebeler %}
+            <table>
+                <thead><tr><th>Talebe</th><th>Önceki</th><th>Son</th><th>Fark</th></tr></thead>
+                <tbody>
+                {% for row in dikkat.dusen_talebeler %}
+                <tr>
+                    <td>{{ row.talebe.ad_soyad }}</td>
+                    <td>{{ row.eski }}%</td>
+                    <td>{{ row.yeni }}%</td>
+                    <td style="color:#ffb0b0">{{ row.delta }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty">Belirgin düşüş yok.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h2 style="font-size:18px">Denemelerim</h2>
+        <span class="muted" style="font-size:12px">{{ kutular|length }} deneme</span>
+    </div>
+    {% if kutular %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+        {% for k in kutular %}
+        <a href="{% url 'etut_deneme_detay' etut.id k.deneme.id %}" class="panel" style="display:block;padding:20px;transition:border-color .2s;text-decoration:none">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:10px">
+                <span class="badge">{{ k.deneme.tarih|date:"d.m.Y" }}</span>
+                <span class="badge">{{ k.trend }}</span>
+            </div>
+            <div style="font-size:16px;font-weight:700;margin-bottom:14px;line-height:1.3">{{ k.deneme.ad }}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+                <div>
+                    <div class="muted">Etüt ort.</div>
+                    <div style="font-size:22px;font-weight:700;margin-top:4px">
+                        {% if k.etut_ortalama %}{{ k.etut_ortalama }}%{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="muted">Sınıf ort.</div>
+                    <div style="font-size:22px;font-weight:700;margin-top:4px">
+                        {% if k.sinif_ortalama %}{{ k.sinif_ortalama }}%{% else %}—{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% if k.zayif_konu %}
+            <div style="margin-top:14px;font-size:12px;color:#ffb0b0">{{ k.zayif_konu }} zayıf konu</div>
+            {% else %}
+            <div style="margin-top:14px;font-size:12px;color:#9be7cb">Zayıf konu yok</div>
+            {% endif %}
+            <div style="margin-top:14px;font-size:12px;color:#a9c6ff">Sıralama · Kazanımlar →</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <section class="panel"><p class="empty">Henüz deneme yok. Kazanım Excel’i yüklenince kutular burada oluşur.</p></section>
+    {% endif %}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const data = {{ gelisim_json|safe }};
+const ctx = document.getElementById('gelisimChart');
+if (ctx && data.labels && data.labels.length) {
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels.map((l, i) => (i + 1) + '. '),
+      datasets: [
+        {
+          label: 'Etüt ort.',
+          data: data.etut,
+          borderColor: '#7aa7ff',
+          backgroundColor: 'rgba(122,167,255,.12)',
+          tension: 0.35,
+          fill: true,
+          borderWidth: 2.5,
+          pointRadius: 4,
+        },
+        {
+          label: data.sinif_ad ? ('Sınıf ort. (' + data.sinif_ad + ')') : 'Sınıf ort.',
+          data: data.sinif,
+          borderColor: '#8d98ad',
+          backgroundColor: 'transparent',
+          tension: 0.35,
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 3,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#c7d2fe' } },
+        tooltip: {
+          callbacks: {
+            title: (items) => data.labels[items[0].dataIndex] || ''
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#8b97b5' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: {
+          min: 40, max: 100,
+          ticks: { color: '#8b97b5' },
+          grid: { color: 'rgba(255,255,255,.05)' }
+        }
+      }
+    }
+  });
+}
+</script>
+{% endif %}
+{% endblock %}

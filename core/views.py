@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login
@@ -8,6 +9,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from core.kazanim_import import import_kazanim_excel
 from core.etut_stats import (
+    etut_baskin_sinif,
+    etut_deneme_kutulari,
+    etut_deneme_siralamasi,
+    etut_dikkat,
+    etut_gelisim_serisi,
     etut_konu_ozeti,
     etut_konu_talebe_satirlari,
     sinif_konu_karsilastirma,
@@ -188,54 +194,100 @@ def _hoca_etutleri(user):
 
 @login_required(login_url="login")
 def etut_panel(request):
-    etutler = _hoca_etutleri(request.user).annotate(
-        talebe_sayisi=Count("talebeler", distinct=True),
+    """Eski giriş → Etüt Kontrol'e yönlendir."""
+    etutler = _hoca_etutleri(request.user)
+    etut = etutler.first()
+    if etut is None:
+        return render(
+            request,
+            "etut_kontrol.html",
+            {"etut": None, "etutler": etutler},
+        )
+    etut_id = request.GET.get("etut")
+    if etut_id:
+        return redirect("etut_kontrol", etut_id=etut_id)
+    return redirect("etut_kontrol", etut_id=etut.id)
+
+
+@login_required(login_url="login")
+def etut_kontrol(request, etut_id):
+    """Etüt hocasının ana üssü: grafik + dikkat + deneme kutuları."""
+    etut = get_object_or_404(
+        Etut.objects.prefetch_related("talebeler", "talebeler__sinif"),
+        pk=etut_id,
     )
-    talebe_ids = (
-        Talebe.objects.filter(etutler__in=etutler)
-        .values_list("id", flat=True)
-        .distinct()
-    )
-    talebeler = (
-        Talebe.objects.filter(id__in=talebe_ids)
-        .select_related("sinif")
-        .order_by("sinif__ad", "ad_soyad")
-    )
+    etutler = _hoca_etutleri(request.user)
+    gelisim = etut_gelisim_serisi(etut)
+    dikkat = etut_dikkat(etut)
+    kutular = etut_deneme_kutulari(etut)
     return render(
         request,
-        "etut_panel.html",
+        "etut_kontrol.html",
         {
+            "etut": etut,
             "etutler": etutler,
-            "talebeler": talebeler,
-            "konu_sayisi": Konu.objects.count(),
-            "deneme_sayisi": Deneme.objects.count(),
+            "gelisim": gelisim,
+            "dikkat": dikkat,
+            "kutular": kutular,
+            "talebe_sayisi": etut.talebeler.count(),
+            "gelisim_json": json.dumps(
+                {
+                    "labels": gelisim["labels"],
+                    "etut": gelisim["etut"],
+                    "sinif": gelisim["sinif"],
+                    "sinif_ad": gelisim["sinif_ad"],
+                },
+                ensure_ascii=False,
+            ),
         },
     )
 
 
 @login_required(login_url="login")
-def etut_detay(request, etut_id):
-    etut = get_object_or_404(Etut.objects.prefetch_related("talebeler"), pk=etut_id)
-    denemeler = Deneme.objects.order_by("-tarih")
-    deneme_id = request.GET.get("deneme")
-    deneme = None
-    if deneme_id:
-        deneme = get_object_or_404(Deneme, pk=deneme_id)
-    elif denemeler.exists():
-        deneme = denemeler.first()
+def etut_deneme_detay(request, etut_id, deneme_id):
+    """Deneme kutusu içi: sıralama + kazanım listesi."""
+    etut = get_object_or_404(Etut, pk=etut_id)
+    deneme = get_object_or_404(Deneme, pk=deneme_id)
+    sekme = request.GET.get("sekme", "siralama")
+    if sekme not in {"siralama", "kazanim"}:
+        sekme = "siralama"
 
-    ozet = etut_konu_ozeti(etut, deneme=deneme)
+    siralama = etut_deneme_siralamasi(etut, deneme)
+    kazanimlar = etut_konu_ozeti(etut, deneme=deneme)
+    sinif = etut_baskin_sinif(etut)
     return render(
         request,
-        "etut_detay.html",
+        "etut_deneme_detay.html",
         {
             "etut": etut,
-            "talebeler": etut.talebeler.select_related("sinif"),
-            "denemeler": denemeler,
-            "secili_deneme": deneme,
-            "konu_ozeti": ozet,
+            "deneme": deneme,
+            "sekme": sekme,
+            "siralama": siralama,
+            "kazanimlar": kazanimlar,
+            "sinif": sinif,
+            "etut_ortalama": deneme_ortalama_safe(etut, deneme),
+            "sinif_ortalama": (
+                deneme_ortalama_safe(etut, deneme, sinif=sinif) if sinif else None
+            ),
         },
     )
+
+
+def deneme_ortalama_safe(etut, deneme, sinif=None):
+    from core.etut_stats import deneme_ortalama
+
+    if sinif is not None:
+        ids = list(
+            Talebe.objects.filter(sinif=sinif).values_list("id", flat=True)
+        )
+    else:
+        ids = list(etut.talebeler.values_list("id", flat=True))
+    return deneme_ortalama(deneme, ids)
+
+
+@login_required(login_url="login")
+def etut_detay(request, etut_id):
+    return redirect("etut_kontrol", etut_id=etut_id)
 
 
 @login_required(login_url="login")

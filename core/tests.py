@@ -109,3 +109,21 @@ class EtutPanelTests(TestCase):
         self.assertContains(resp, "Etüt ortalaması")
         self.assertContains(resp, "Sınıf ortalaması")
         self.assertContains(resp, "SÖZCÜKTE ANLAM")
+
+    def test_etut_kontrol_and_deneme_box(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        resp = client.get(f"/panel/etut/{self.etut.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Etüt Kontrol")
+        self.assertContains(resp, "Denemelerim")
+        self.assertContains(resp, "Gelişim")
+        detail = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/"
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Genel sıralama")
+        kazanim = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/?sekme=kazanim"
+        )
+        self.assertContains(kazanim, "Detaylı kazanım")
