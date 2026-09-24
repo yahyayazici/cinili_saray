@@ -5,70 +5,158 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Çinili Saray{% endblock %}</title>
     <style>
+        :root {
+            --background: #050914;
+            --background-soft: #0a1020;
+            --surface: rgba(255, 255, 255, 0.05);
+            --surface-border: rgba(255, 255, 255, 0.1);
+            --text: #f7f9ff;
+            --text-soft: #9da8be;
+            --primary: #7aa7ff;
+            --primary-light: #b9d0ff;
+            --accent: #8be8d2;
+            --danger: #ffb0b0;
+            --ok: #9be7cb;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        body { min-height: 100vh; background: #070b14; color: white; }
+        body {
+            min-height: 100vh;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(27, 76, 255, 0.18), transparent 38%),
+                radial-gradient(circle at bottom right, rgba(0, 255, 195, 0.08), transparent 42%),
+                var(--background);
+        }
         a { color: inherit; text-decoration: none; }
-        .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-        .sidebar { padding: 28px 20px; border-right: 1px solid rgba(255,255,255,.08); background: #0b101b; }
-        .brand { font-weight: 800; letter-spacing: .08em; margin-bottom: 40px; }
-        .menu a { display: block; padding: 13px 14px; margin-bottom: 8px; border-radius: 12px; color: #8f9ab0; }
+        .layout { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+        .sidebar {
+            padding: 28px 18px;
+            border-right: 1px solid var(--surface-border);
+            background: rgba(11, 16, 27, 0.92);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+        }
+        .brand { font-weight: 800; letter-spacing: .1em; margin-bottom: 8px; font-size: 14px; }
+        .brand-sub { color: var(--text-soft); font-size: 11px; margin-bottom: 36px; letter-spacing: .04em; }
+        .menu { flex: 1; }
+        .menu a {
+            display: block;
+            padding: 12px 14px;
+            margin-bottom: 6px;
+            border-radius: 12px;
+            color: #8f9ab0;
+            font-size: 14px;
+            transition: background .2s, color .2s;
+        }
         .menu a.active, .menu a:hover { color: white; background: rgba(255,255,255,.07); }
+        .menu-foot { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--surface-border); }
+        .menu-foot a, .menu-foot span { display: block; padding: 10px 14px; color: var(--text-soft); font-size: 13px; }
         .main { padding: 32px; }
         .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 28px; }
-        .topbar h1 { font-size: 28px; margin-top: 4px; }
-        .topbar small { color: #8d98ad; }
-        .welcome-text { margin-top: 8px; color: #8d98ad; font-size: 14px; }
+        .topbar h1 { font-size: 28px; margin-top: 4px; letter-spacing: -0.02em; }
+        .topbar small { color: var(--text-soft); letter-spacing: .04em; }
+        .welcome-text { margin-top: 8px; color: var(--text-soft); font-size: 14px; line-height: 1.5; max-width: 52ch; }
         .top-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .action-btn { padding: 11px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; }
+        .action-btn {
+            padding: 11px 16px; border-radius: 12px; font-size: 13px; font-weight: 700;
+            border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+            transition: transform .15s, border-color .2s, background .2s;
+        }
+        .action-btn:hover { transform: translateY(-1px); }
         .action-btn.primary { background: linear-gradient(135deg, #ffffff, #a9c6ff); color: #08101d; }
-        .action-btn.secondary { color: white; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); }
+        .action-btn.secondary { color: white; border: 1px solid var(--surface-border); background: var(--surface); }
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-        .card, .panel { padding: 24px; border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: rgba(255,255,255,.04); }
-        .card small { color: #8d98ad; }
-        .card strong { display: block; margin-top: 14px; font-size: 30px; }
+        .card, .panel {
+            padding: 24px;
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            background: var(--surface);
+            transition: border-color .2s, background .2s;
+        }
+        a.panel:hover, a.card:hover {
+            border-color: rgba(122, 167, 255, 0.35);
+            background: rgba(255, 255, 255, 0.07);
+        }
+        .card small { color: var(--text-soft); }
+        .card strong { display: block; margin-top: 14px; font-size: 30px; letter-spacing: -0.03em; }
         .panel h2 { font-size: 18px; margin-bottom: 18px; }
         .messages { list-style: none; margin-bottom: 18px; }
         .messages li { padding: 12px 14px; border-radius: 12px; margin-bottom: 8px; font-size: 14px; }
-        .messages .success { background: rgba(80,200,160,.12); border: 1px solid rgba(80,200,160,.25); color: #9be7cb; }
-        .messages .error { background: rgba(255,100,100,.1); border: 1px solid rgba(255,100,100,.25); color: #ffb0b0; }
+        .messages .success { background: rgba(80,200,160,.12); border: 1px solid rgba(80,200,160,.25); color: var(--ok); }
+        .messages .error { background: rgba(255,100,100,.1); border: 1px solid rgba(255,100,100,.25); color: var(--danger); }
         .messages .warning { background: rgba(255,190,80,.1); border: 1px solid rgba(255,190,80,.25); color: #ffd89a; }
         .form-grid { display: grid; gap: 16px; max-width: 520px; }
-        label { display: block; font-size: 12px; color: #8d98ad; margin-bottom: 8px; letter-spacing: .04em; }
-        input[type=text], input[type=date], input[type=file] {
-            width: 100%; height: 48px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1);
+        label { display: block; font-size: 12px; color: var(--text-soft); margin-bottom: 8px; letter-spacing: .04em; }
+        input[type=text], input[type=date], input[type=file], select {
+            width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--surface-border);
             background: #111827; color: white; padding: 0 14px; font-size: 14px;
         }
         input[type=file] { padding-top: 12px; height: auto; min-height: 48px; }
         .hint { margin-top: 8px; color: #68748b; font-size: 12px; line-height: 1.5; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: top; }
-        th { color: #8d98ad; font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-        td a { color: #a9c6ff; }
-        .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.06); color: #9da8be; font-size: 11px; }
-        .empty { color: #8d98ad; font-size: 14px; padding: 12px 0; }
+        th { color: var(--text-soft); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+        td a { color: var(--primary-light); }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--text-soft); font-size: 11px; }
+        .empty { color: var(--text-soft); font-size: 14px; padding: 12px 0; }
         .talebe-block { margin-bottom: 22px; }
         .talebe-block h3 { font-size: 15px; margin-bottom: 8px; }
-        .muted { color: #8d98ad; }
+        .muted { color: var(--text-soft); }
+        .content-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-top: 16px; }
+        .quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .quick-btn {
+            display: block;
+            background: rgba(19, 26, 44, 0.9);
+            border: 1px solid var(--surface-border);
+            color: white;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform .2s, border-color .2s, background .2s;
+        }
+        .quick-btn:hover {
+            transform: translateY(-2px);
+            background: #1d2944;
+            border-color: rgba(122, 167, 255, 0.45);
+        }
+        .quick-btn small { display: block; margin-top: 6px; color: var(--text-soft); font-weight: 500; font-size: 12px; }
         @media (max-width: 900px) {
             .layout { grid-template-columns: 1fr; }
             .sidebar { display: none; }
-            .stats { grid-template-columns: 1fr 1fr; }
+            .stats, .content-grid, .quick-grid, .dikkat-grid { grid-template-columns: 1fr; }
+            .main { padding: 20px 16px; }
+            .topbar h1 { font-size: 22px; }
         }
+        {% block extra_css %}{% endblock %}
     </style>
 </head>
 <body>
+{% with url_name=request.resolver_match.url_name %}
 <div class="layout">
     <aside class="sidebar">
         <div class="brand">ÇİNİLİ SARAY</div>
+        <div class="brand-sub">Eğitim Yönetim Sistemi</div>
         <div class="menu">
-            <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Ana Panel</a>
-            <a href="{% url 'etut_panel' %}" class="{% if request.resolver_match.url_name == 'etut_panel' or request.resolver_match.url_name == 'etut_kontrol' or request.resolver_match.url_name == 'etut_deneme_detay' or request.resolver_match.url_name == 'etut_konu_detay' or request.resolver_match.url_name == 'etut_talebeler' or request.resolver_match.url_name == 'etut_talebe_detay' %}active{% endif %}">Etüt Kontrol</a>
-            <a href="{% url 'akademik_takip' %}" class="{% if request.resolver_match.url_name == 'akademik_takip' or request.resolver_match.url_name == 'deneme_yukle' or request.resolver_match.url_name == 'deneme_detay' or request.resolver_match.url_name == 'deneme_sinif_raporu' or request.resolver_match.url_name == 'konu_listesi' %}active{% endif %}">Akademik Yükle</a>
-            <a href="{% url 'konu_listesi' %}" class="{% if request.resolver_match.url_name == 'konu_listesi' %}active{% endif %}">Konular</a>
+            <a href="{% url 'dashboard' %}" class="{% if url_name == 'dashboard' %}active{% endif %}">Ana Panel</a>
+            <a href="{% url 'etut_panel' %}" class="{% if url_name == 'etut_panel' or url_name == 'etut_kontrol' or url_name == 'etut_deneme_detay' or url_name == 'etut_konu_detay' %}active{% endif %}">Etüt Kontrol</a>
+            {% if nav_etut %}
+            <a href="{% url 'etut_talebeler' nav_etut.id %}" class="{% if url_name == 'etut_talebeler' or url_name == 'etut_talebe_detay' %}active{% endif %}">Talebeler</a>
+            {% else %}
             <a href="{% url 'etut_panel' %}">Talebeler</a>
-            <a href="#">Sınavlar</a>
-            <a href="#">Yoklamalar</a>
-            <a href="#">Raporlar</a>
+            {% endif %}
+            <a href="{% url 'akademik_takip' %}" class="{% if url_name == 'akademik_takip' or url_name == 'deneme_yukle' or url_name == 'deneme_detay' or url_name == 'deneme_sinif_raporu' %}active{% endif %}">Akademik Yükle</a>
+            <a href="{% url 'konu_listesi' %}" class="{% if url_name == 'konu_listesi' %}active{% endif %}">Konular</a>
+            {% if user.is_staff %}
+            <a href="/admin/">Yönetim</a>
+            {% endif %}
+        </div>
+        <div class="menu-foot">
+            {% if user.is_authenticated %}
+            <span>{{ user.get_username }}</span>
+            <a href="{% url 'logout' %}">Çıkış</a>
+            {% endif %}
         </div>
     </aside>
     <main class="main">
@@ -82,5 +170,7 @@
         {% block content %}{% endblock %}
     </main>
 </div>
+{% endwith %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>

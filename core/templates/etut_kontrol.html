@@ -50,7 +50,7 @@
     <h2>Dikkat
         {% if dikkat.deneme %}<span class="badge">{{ dikkat.deneme.ad }}</span>{% endif %}
     </h2>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div class="dikkat-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
         <div>
             <h3 style="font-size:13px;color:#8d98ad;margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase">Zayıf / geride konular</h3>
             {% if dikkat.zayif_konular %}

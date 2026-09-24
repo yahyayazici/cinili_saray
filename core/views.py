@@ -2,10 +2,11 @@ from datetime import datetime
 import json
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from core.kazanim_import import import_kazanim_excel
 from core.exports import (
@@ -68,15 +69,44 @@ def login_view(request):
     )
 
 
+def logout_view(request):
+    auth_logout(request)
+    return redirect("home")
+
+
 @login_required(login_url="login")
 def dashboard(request):
+    etutler = list(_hoca_etutleri(request.user))
+    etut = etutler[0] if etutler else None
+    gelisim = etut_gelisim_serisi(etut) if etut else None
+    gelisim_json = None
+    if gelisim and gelisim.get("labels"):
+        gelisim_json = json.dumps(
+            {
+                "labels": gelisim["labels"],
+                "etut": gelisim["etut"],
+                "sinif": gelisim["sinif"],
+                "sinif_ad": gelisim["sinif_ad"],
+            },
+            ensure_ascii=False,
+        )
+
+    ad = (request.user.get_full_name() or "").strip() or request.user.get_username()
+    bugun = timezone.localdate().strftime("%d.%m.%Y")
+
     return render(
         request,
         "dashboard.html",
         {
+            "ad": ad,
+            "bugun": bugun,
             "deneme_sayisi": Deneme.objects.count(),
             "talebe_sayisi": Talebe.objects.count(),
             "konu_sayisi": Konu.objects.count(),
+            "etut_sayisi": len(etutler),
+            "etut": etut,
+            "etutler": etutler,
+            "gelisim_json": gelisim_json,
         },
     )
 

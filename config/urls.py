@@ -3,6 +3,7 @@ from django.urls import path
 from core.views import (
     home,
     login_view,
+    logout_view,
     dashboard,
     akademik_takip,
     deneme_yukle,
@@ -21,6 +22,7 @@ from core.views import (
 urlpatterns = [
     path("", home, name="home"),
     path("giris/", login_view, name="login"),
+    path("cikis/", logout_view, name="logout"),
     path("panel/", dashboard, name="dashboard"),
     path("panel/akademik/", akademik_takip, name="akademik_takip"),
     path("panel/akademik/yukle/", deneme_yukle, name="deneme_yukle"),
