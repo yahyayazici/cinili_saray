@@ -1,0 +1,50 @@
+/* Etüt Kontrol — panel tokens ile uyumlu */
+.ek-page { max-width: 1180px; margin: 0 auto; padding: 1.25rem 1.1rem 2.5rem; }
+.ek-head { margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
+.ek-kicker { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--cs-muted, #64748b); margin: 0 0 .35rem; }
+.ek-head h1 { margin: 0; font-size: 1.65rem; letter-spacing: -.02em; }
+.ek-desc { margin: .45rem 0 0; color: var(--cs-muted, #64748b); font-size: .94rem; max-width: 52ch; line-height: 1.45; }
+.ek-actions { display: flex; gap: .55rem; flex-wrap: wrap; align-items: center; }
+.ek-card {
+  background: var(--cs-surface, #fff);
+  border: 1px solid rgba(15, 23, 42, .08);
+  border-radius: 16px;
+  padding: 1.1rem 1.15rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+}
+.ek-card h2 { margin: 0 0 .65rem; font-size: 1.05rem; }
+.ek-muted { color: var(--cs-muted, #64748b); font-size: .86rem; }
+.ek-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .85rem; }
+.ek-box {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, .09);
+  border-radius: 14px;
+  padding: 1rem;
+  transition: border-color .18s, transform .18s, box-shadow .18s;
+}
+.ek-box:hover { border-color: rgba(37, 99, 235, .35); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(15,23,42,.08); }
+.ek-box strong { display: block; font-size: 1rem; margin: .45rem 0 .7rem; line-height: 1.3; }
+.ek-stat { font-size: 1.45rem; font-weight: 700; letter-spacing: -.03em; }
+.ek-badge {
+  display: inline-block;
+  padding: .18rem .5rem;
+  border-radius: 999px;
+  background: rgba(15,23,42,.06);
+  font-size: .72rem;
+  color: #475569;
+}
+.ek-danger { color: #b91c1c; }
+.ek-ok { color: #047857; }
+.ek-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.ek-table th, .ek-table td { text-align: left; padding: .55rem .4rem; border-bottom: 1px solid rgba(15,23,42,.06); vertical-align: top; }
+.ek-table th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+.ek-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.ek-chart { height: 260px; }
+@media (max-width: 800px) {
+  .ek-split { grid-template-columns: 1fr; }
+  .ek-head h1 { font-size: 1.35rem; }
+}

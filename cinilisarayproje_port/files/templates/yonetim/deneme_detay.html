@@ -1,0 +1,261 @@
+{% extends "yonetim/base.html" %}
+{% block title %}{{ deneme.ad }}{% endblock %}
+{% block extra_css %}
+<style>
+.yonetim-page .deneme-siralama-table thead th,
+.yonetim-page .deneme-siralama-table tbody td {
+    text-align: left;
+}
+.yonetim-page .deneme-siralama-table thead th.num-col,
+.yonetim-page .deneme-siralama-table tbody td.num-col {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="yonetim-page">
+    <header class="yonetim-page-head">
+        <div>
+            <h1>{% if deneme.sira_no %}{{ deneme.sira_no }}. Deneme — {% endif %}{{ deneme.ad }}</h1>
+            <p>
+                {{ deneme.sinav_tarihi|date:"d.m.Y" }} · {{ deneme.get_durum_display }} ·
+                {{ deneme.get_tur_display }}
+                {% if deneme.yayin %} · {{ deneme.yayin }}{% endif %}
+                {% if deneme.egitim_yili %} · {{ deneme.egitim_yili.ad }}{% endif %}
+                {% if deneme.tur == "bireysel" and deneme.bireysel_talebe %} · {{ deneme.bireysel_talebe.ad_soyad }}{% endif %}
+            </p>
+        </div>
+        <div class="yonetim-page-head-actions">
+            <a href="{% url 'yonetim:deneme_listesi' %}" class="ghost-btn">Liste</a>
+            {% if sil_yetkisi %}
+            <form method="post" action="{% url 'yonetim:deneme_sil' deneme.pk %}" onsubmit="return confirm('«{{ deneme.ad|escapejs }}» silinsin mi? Sonuçlar da kalkar.');">
+                {% csrf_token %}
+                <button type="submit" class="yonetim-action-btn yonetim-action-btn-danger">Denemeyi Sil</button>
+            </form>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if yukleyebilir %}
+    <section class="yonetim-card" style="margin-bottom:20px;">
+        <h2>{% if deneme.durum == 'aktif' %}Excel ile güncelle{% else %}Excel Yükle{% endif %}</h2>
+        <p>Okyanus <strong>genel sonuç raporu</strong> (.xlsx) yükleyin. Her ders için D / Y / B / Net ve puan çekilir; isimler sitedekiyle eşleştirilir. Farklıysa «şu talebe şuna benziyor, doğru mu?» diye sorulur.{% if deneme.durum == 'aktif' %} Mevcut sonuçların üzerine yazılır.{% endif %}</p>
+        <form method="post" enctype="multipart/form-data" style="margin-top:12px;">
+            {% csrf_token %}
+            <input type="file" name="excel" accept=".xlsx,.xls" class="input" required>
+            <button type="submit" class="primary-btn" style="margin-top:12px;">{% if deneme.durum == 'aktif' %}Yeniden yükle{% else %}Yükle ve Önizle{% endif %}</button>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if deneme.durum == 'aktif' %}
+    {% if yukleyebilir %}
+    <section class="yonetim-card" style="margin-bottom:20px;">
+        <h2>KonuKazanimDetay Excel yükle</h2>
+        <p style="margin:0 0 12px;color:#64748b;font-size:13px;">
+            Deneme kutuğundan indirdiğiniz <strong>KonuKazanimDetay</strong> (.xlsx) dosyasını yükleyin.
+            Mevcut talebe isimleriyle eşleşir; Etüt Kontrol paneline grafik / dikkat / talebe kutuları akar.
+            {% if kazanim_satir %}Şu an {{ kazanim_satir }} satır · {{ kazanim_talebe }} talebe kayıtlı.{% endif %}
+        </p>
+        <form method="post" action="{% url 'yonetim:deneme_kazanim_yukle' deneme.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="file" name="kazanim_excel" accept=".xlsx,.xlsm" class="input" required>
+            <button type="submit" class="primary-btn" style="margin-top:12px;">Kazanım Excel yükle</button>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if yukleyebilir %}
+    <section class="yonetim-card" style="margin-bottom:20px;">
+        <h2>Gap / konu raporu yükle</h2>
+        <p style="margin:0 0 12px;color:#64748b;font-size:13px;">
+            Öğrenci Gap PDF’lerini (çoklu seçim) yükleyin. Yapay zekâ / eşleştirme adı okur;
+            konu satırlarındaki D / Y / B kaydedilir ve Deneme Zekası + KTT konu analiziyle birleştirilir.
+        </p>
+        <form method="post" action="{% url 'yonetim:deneme_gap_yukle' deneme.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="file" name="gap_pdf" accept=".pdf,application/pdf" class="input" multiple required>
+            <button type="submit" class="primary-btn" style="margin-top:12px;">PDF’leri yükle</button>
+        </form>
+        {% if gap_bekleyen %}
+        <p style="margin:12px 0 0;color:#b45309;font-size:13px;">{{ gap_bekleyen }} raporda isim onayı bekleniyor.</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if gap_raporlari %}
+    <section class="yonetim-card" style="margin-bottom:20px;">
+        <h2>Yüklenen Gap raporları</h2>
+        <div class="responsive-table">
+            <table class="yonetim-table">
+                <thead>
+                    <tr>
+                        <th>PDF adı</th>
+                        <th>Okunan ad</th>
+                        <th>Talebe</th>
+                        <th>Eşleşme</th>
+                        <th>Konu</th>
+                        <th>Durum</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rapor in gap_raporlari %}
+                    <tr>
+                        <td>{{ rapor.dosya_adi }}</td>
+                        <td>{{ rapor.ham_ad|default:"—" }}{% if rapor.sinif_metni %} <span class="muted">({{ rapor.sinif_metni }})</span>{% endif %}</td>
+                        <td>{% if rapor.talebe %}{{ rapor.talebe.ad_soyad }}{% else %}—{% endif %}</td>
+                        <td>{{ rapor.get_eslesme_display }}</td>
+                        <td>{{ rapor.konu_satirlari.all|length }}</td>
+                        <td>{{ rapor.get_durum_display }}</td>
+                        <td>
+                            {% if rapor.durum == 'eslesme_bekliyor' and yukleyebilir %}
+                            <form method="post" action="{% url 'yonetim:deneme_gap_eslestir' deneme.pk rapor.pk %}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                                {% csrf_token %}
+                                <select name="talebe_id" class="input" required style="min-width:160px;">
+                                    <option value="">Talebe seç…</option>
+                                    {% for t in talebeler %}
+                                    <option value="{{ t.id }}"{% if rapor.oneri_talebe_id == t.id %} selected{% endif %}>{{ t.ad_soyad }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="ghost-btn">Eşleştir</button>
+                            </form>
+                            {% endif %}
+                            {% if yukleyebilir %}
+                            <form method="post" action="{% url 'yonetim:deneme_gap_sil' deneme.pk rapor.pk %}" style="display:inline;" onsubmit="return confirm('Bu Gap raporu silinsin mi?');">
+                                {% csrf_token %}
+                                <button type="submit" class="ghost-btn">Sil</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if zayif_konular %}
+    <section class="yonetim-card" style="margin-bottom:20px;">
+        <h2>Zayıf konular (Gap · %70 altı)</h2>
+        <div class="responsive-table">
+            <table class="yonetim-table">
+                <thead>
+                    <tr>
+                        <th>Talebe</th>
+                        <th>Branş</th>
+                        <th>Konu</th>
+                        <th>D</th>
+                        <th>Y</th>
+                        <th>B</th>
+                        <th>%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for k in zayif_konular %}
+                    <tr>
+                        <td>{% if k.rapor.talebe %}{{ k.rapor.talebe.ad_soyad }}{% else %}{{ k.rapor.ham_ad }}{% endif %}</td>
+                        <td>{{ k.get_brans_display }}</td>
+                        <td>{{ k.konu_normalize|default:k.konu_ham }}</td>
+                        <td>{{ k.dogru }}</td>
+                        <td>{{ k.yanlis }}</td>
+                        <td>{{ k.bos }}</td>
+                        <td>{{ k.yuzde }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="yonetim-card">
+        <h2>{% if deneme.tur == "bireysel" %}Bireysel Sonuç{% else %}Genel Sıralama (Puan bazlı){% endif %}</h2>
+        <div class="responsive-table">
+            <table class="yonetim-table deneme-siralama-table">
+                <thead>
+                    <tr>
+                        <th class="num-col">Kurum sırası</th>
+                        <th>Talebe</th>
+                        <th class="num-col">Doğru</th>
+                        <th class="num-col">Yanlış</th>
+                        <th class="num-col">Boş</th>
+                        <th class="num-col">Net</th>
+                        <th class="num-col">Puan</th>
+                        {% if deneme.tur != "bireysel" %}
+                        <th class="num-col">Sınıf sırası</th>
+                        {% endif %}
+                        <th>Harici sıralama</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sonuc in sonuclar %}
+                    <tr>
+                        <td class="num-col">
+                            {% if sonuc.kurum_sirasi %}{{ sonuc.kurum_sirasi }} / {{ sonuc.kurum_toplam }}{% else %}{{ forloop.counter }}{% endif %}
+                        </td>
+                        <td>{{ sonuc.talebe.ad_soyad }}</td>
+                        <td class="num-col">{{ sonuc.toplam_dogru }}</td>
+                        <td class="num-col">{{ sonuc.toplam_yanlis }}</td>
+                        <td class="num-col">{{ sonuc.toplam_bos }}</td>
+                        <td class="num-col">{{ sonuc.toplam_net }}</td>
+                        <td class="num-col">{{ sonuc.puan }}</td>
+                        {% if deneme.tur != "bireysel" %}
+                        <td class="num-col">{% if sonuc.sinif_sirasi %}{{ sonuc.sinif_sirasi }} / {{ sonuc.sinif_toplam }}{% else %}—{% endif %}</td>
+                        {% endif %}
+                        <td class="muted">{{ sonuc.dis_siralama_metni|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {% if detay_satirlari %}
+    <section class="yonetim-card" style="margin-top:20px;">
+        <h2>Detaylı Başarı Listesi</h2>
+        <p style="margin:0 0 12px;color:#64748b;font-size:13px;">Türkçe, Matematik, Fen, Sosyal, Din Kültürü, İngilizce — ders ders D / Y / B</p>
+        <div class="responsive-table">
+            <table class="yonetim-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">#</th>
+                        <th rowspan="2">Talebe</th>
+                        {% for baslik in detay_brans_basliklari %}
+                        <th colspan="3" style="text-align:center;">{{ baslik }}</th>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        {% for baslik in detay_brans_basliklari %}
+                        <th>D</th><th>Y</th><th>B</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for satir in detay_satirlari %}
+                    <tr>
+                        <td>{{ satir.sira }}</td>
+                        <td>{{ satir.sonuc.talebe.ad_soyad }}</td>
+                        {% for brans in satir.branslar %}
+                        <td>{{ brans.dogru }}</td>
+                        <td>{{ brans.yanlis }}</td>
+                        <td>{{ brans.bos }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if ai_platform_aktif and sonuclar %}
+    <section class="yonetim-card" style="margin-top:20px;">
+        {% include "includes/ai_zekasi_widget.html" with ai_tur="deneme_analiz" ai_deneme_id=deneme.id ai_kicker="Deneme analizi" ai_baslik=deneme.ad|add:" · Akademik değerlendirme" %}
+    </section>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
