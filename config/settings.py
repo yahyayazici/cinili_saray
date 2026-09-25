@@ -28,7 +28,15 @@ DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
+    "testserver",
     ".onrender.com",
+    ".loca.lt",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.loca.lt",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
 ]
 
 
@@ -67,6 +75,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.panel_nav',
             ],
         },
     },

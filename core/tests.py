@@ -1,3 +1,178 @@
-from django.test import TestCase
+from datetime import date
+from pathlib import Path
 
-# Create your tests here.
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+
+from core.etut_stats import etut_konu_ozeti, etut_konu_talebe_satirlari, sinif_raporu
+from core.kazanim_import import import_kazanim_excel
+from core.models import Deneme, Ders, Etut, Konu, KonuSonuc, Talebe
+
+SAMPLE = Path(
+    "/home/ubuntu/.cursor/projects/workspace/uploads/"
+    "KonuKazanimDetay_23.09.2026_8c21.xlsx"
+)
+
+
+class KazanimImportTests(TestCase):
+    def test_import_creates_topics_and_reuses_on_second_upload(self):
+        self.assertTrue(SAMPLE.exists(), "Örnek Excel bulunamadı")
+
+        with SAMPLE.open("rb") as fh:
+            first = import_kazanim_excel(
+                fh,
+                deneme_adi="1. Deneme",
+                deneme_tarihi=date(2026, 9, 23),
+            )
+
+        self.assertGreater(first.sonuc_yazilan, 0)
+        self.assertGreater(first.konu_yeni, 0)
+        konu_count = Konu.objects.count()
+        ders_count = Ders.objects.count()
+        talebe_count = Talebe.objects.count()
+
+        with SAMPLE.open("rb") as fh:
+            second = import_kazanim_excel(
+                fh,
+                deneme_adi="2. Deneme",
+                deneme_tarihi=date(2026, 9, 30),
+            )
+
+        self.assertEqual(second.konu_yeni, 0)
+        self.assertEqual(second.konu_mevcut, konu_count)
+        self.assertEqual(second.ders_yeni, 0)
+        self.assertEqual(Konu.objects.count(), konu_count)
+        self.assertEqual(Ders.objects.count(), ders_count)
+        self.assertEqual(Talebe.objects.count(), talebe_count)
+        self.assertEqual(Deneme.objects.count(), 2)
+        self.assertEqual(
+            KonuSonuc.objects.filter(deneme_id=second.deneme_id).count(),
+            second.sonuc_yazilan,
+        )
+
+    def test_upload_view_requires_login_and_imports(self):
+        user = get_user_model().objects.create_user("admin", password="admin123")
+        client = Client()
+        client.login(username="admin", password="admin123")
+
+        with SAMPLE.open("rb") as fh:
+            response = client.post(
+                "/panel/akademik/yukle/",
+                {
+                    "deneme_adi": "KTT-1",
+                    "deneme_tarihi": "2026-09-23",
+                    "rapor": fh,
+                },
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Deneme.objects.count(), 1)
+        deneme = Deneme.objects.get()
+        self.assertEqual(deneme.ad, "KTT-1")
+
+
+class EtutPanelTests(TestCase):
+    def setUp(self):
+        with SAMPLE.open("rb") as fh:
+            stats = import_kazanim_excel(
+                fh,
+                deneme_adi="Etüt Deneme",
+                deneme_tarihi=date(2026, 9, 23),
+            )
+        self.deneme = Deneme.objects.get(pk=stats.deneme_id)
+        self.user = get_user_model().objects.create_user("hoca", password="hoca123")
+        self.etut = Etut.objects.create(ad="Test Etüt", hoca=self.user)
+        self.etut.talebeler.set(Talebe.objects.all()[:5])
+        self.konu = Konu.objects.filter(ad__icontains="SÖZCÜKTE").first()
+        self.assertIsNotNone(self.konu)
+
+    def test_etut_average_and_class_report(self):
+        ozet = etut_konu_ozeti(self.etut, deneme=self.deneme)
+        self.assertTrue(any(r["konu_id"] == self.konu.id for r in ozet))
+        satirlar, ortalama = etut_konu_talebe_satirlari(
+            self.etut, self.konu, self.deneme
+        )
+        self.assertEqual(len(satirlar), 5)
+        self.assertIsNotNone(ortalama)
+        rapor = sinif_raporu(self.deneme)
+        self.assertTrue(any(r["konu_id"] == self.konu.id for r in rapor))
+
+    def test_etut_konu_page(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        url = (
+            f"/panel/etut/{self.etut.id}/konu/{self.konu.id}/"
+            f"?deneme={self.deneme.id}"
+        )
+        resp = client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Etüt ortalaması")
+        self.assertContains(resp, "Sınıf ortalaması")
+        self.assertContains(resp, "SÖZCÜKTE ANLAM")
+
+    def test_etut_kontrol_and_deneme_box(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        resp = client.get(f"/panel/etut/{self.etut.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Etüt Kontrol")
+        self.assertContains(resp, "Denemelerim")
+        self.assertContains(resp, "Gelişim")
+        detail = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/"
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Genel sıralama")
+        kazanim = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/?sekme=kazanim"
+        )
+        self.assertContains(kazanim, "Detaylı kazanım")
+
+    def test_talebe_kutulari(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        talebe = self.etut.talebeler.first()
+        liste = client.get(f"/panel/etut/{self.etut.id}/talebeler/")
+        self.assertEqual(liste.status_code, 200)
+        self.assertContains(liste, talebe.ad_soyad)
+        detay = client.get(
+            f"/panel/etut/{self.etut.id}/talebe/{talebe.id}/"
+        )
+        self.assertEqual(detay.status_code, 200)
+        self.assertContains(detay, "Deneme puanları")
+        self.assertContains(detay, "Deneme kazanımları")
+        self.assertContains(detay, "Zayıf")
+
+    def test_pdf_excel_downloads(self):
+        client = Client()
+        client.login(username="hoca", password="hoca123")
+        talebe = self.etut.talebeler.first()
+
+        siralama_xlsx = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/?indir=excel"
+        )
+        self.assertEqual(siralama_xlsx.status_code, 200)
+        self.assertIn(
+            "spreadsheetml",
+            siralama_xlsx["Content-Type"],
+        )
+
+        kazanim_pdf = client.get(
+            f"/panel/etut/{self.etut.id}/deneme/{self.deneme.id}/"
+            f"?sekme=kazanim&indir=pdf"
+        )
+        self.assertEqual(kazanim_pdf.status_code, 200)
+        self.assertEqual(kazanim_pdf["Content-Type"], "application/pdf")
+        self.assertTrue(kazanim_pdf.content.startswith(b"%PDF"))
+
+        talebe_pdf = client.get(
+            f"/panel/etut/{self.etut.id}/talebe/{talebe.id}/?indir=pdf"
+        )
+        self.assertEqual(talebe_pdf.status_code, 200)
+        self.assertTrue(talebe_pdf.content.startswith(b"%PDF"))
+
+        sinif_xlsx = client.get(
+            f"/panel/akademik/deneme/{self.deneme.id}/sinif/?indir=excel"
+        )
+        self.assertEqual(sinif_xlsx.status_code, 200)
+        self.assertIn("spreadsheetml", sinif_xlsx["Content-Type"])

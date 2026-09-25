@@ -1,0 +1,40 @@
+{% extends "panel_base.html" %}
+{% block title %}Talebeler · {{ etut.ad }}{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>Etüt · Talebelerim</small>
+        <h1>{{ etut.ad }}</h1>
+        <p class="welcome-text">
+            Talebe kutularına gir; puan grafiği ve deneme kazanımlarını gör. Zayıflar öne çıkar.
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'etut_kontrol' etut.id %}" class="action-btn secondary">← Etüt Kontrol</a>
+    </div>
+</div>
+
+{% if kutular %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
+    {% for k in kutular %}
+    <a href="{% url 'etut_talebe_detay' etut.id k.talebe.id %}" class="panel" style="display:block;padding:20px;text-decoration:none">
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:10px">
+            <span class="badge">{{ k.talebe.sinif.ad }}</span>
+            <span class="badge">{{ k.trend }}</span>
+        </div>
+        <div style="font-size:16px;font-weight:700;line-height:1.3;margin-bottom:14px">{{ k.talebe.ad_soyad }}</div>
+        <div class="muted" style="font-size:12px">Son ortalama</div>
+        <div style="font-size:26px;font-weight:700;margin-top:4px">
+            {% if k.son_ortalama %}{{ k.son_ortalama }}%{% else %}—{% endif %}
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:{% if k.zayif_sayisi %}#ffb0b0{% else %}#9be7cb{% endif %}">
+            {% if k.zayif_sayisi %}Son denemede {{ k.zayif_sayisi }} zayıf konu{% else %}Zayıf konu yok{% endif %}
+        </div>
+        <div class="muted" style="margin-top:8px;font-size:11px">{{ k.deneme_sayisi }} deneme</div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<section class="panel"><p class="empty">Bu etütte talebe yok.</p></section>
+{% endif %}
+{% endblock %}

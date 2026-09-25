@@ -1,0 +1,1916 @@
+From 27bfeb08834a3393c8dc95bcd99385da14406caa Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Fri, 25 Sep 2026 03:33:43 +0000
+Subject: [PATCH] =?UTF-8?q?Add=20Et=C3=BCt=20Kontrol=20and=20KonuKazanimDe?=
+ =?UTF-8?q?tay=20Excel=20to=20production=20panel.?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Wire kazanım import onto DenemeSinavi, etüt mesul dashboard (chart,
+dikkat, deneme/talebe boxes, PDF/Excel), and yönetim upload — for
+cinilisarayproje.com without disturbing kitap or existing deneme flows.
+---
+ static/css/etut-kontrol.css                   |  50 ++
+ takip/deneme_kazanim_excel.py                 | 207 ++++++++
+ takip/deneme_models.py                        |  62 +++
+ takip/deneme_yonetim_views.py                 |  51 +-
+ takip/etut_kontrol_service.py                 | 479 ++++++++++++++++++
+ takip/etut_kontrol_views.py                   | 280 ++++++++++
+ .../migrations/0101_deneme_kazanim_sonucu.py  |  38 ++
+ takip/models.py                               |   1 +
+ takip/panel_permissions.py                    |  16 +
+ takip/tests/test_etut_kontrol_kazanim.py      |  76 +++
+ takip/urls.py                                 |  19 +
+ takip/yonetim_urls.py                         |   5 +
+ templates/etut_kontrol/bos.html               |  13 +
+ templates/etut_kontrol/deneme.html            |  69 +++
+ templates/etut_kontrol/kontrol.html           | 135 +++++
+ templates/etut_kontrol/pdf_deneme.html        |  16 +
+ templates/etut_kontrol/pdf_talebe.html        |  16 +
+ templates/etut_kontrol/talebe.html            |  93 ++++
+ templates/etut_kontrol/talebeler.html         |  40 ++
+ templates/yonetim/deneme_detay.html           |  16 +
+ 20 files changed, 1681 insertions(+), 1 deletion(-)
+ create mode 100644 static/css/etut-kontrol.css
+ create mode 100644 takip/deneme_kazanim_excel.py
+ create mode 100644 takip/etut_kontrol_service.py
+ create mode 100644 takip/etut_kontrol_views.py
+ create mode 100644 takip/migrations/0101_deneme_kazanim_sonucu.py
+ create mode 100644 takip/tests/test_etut_kontrol_kazanim.py
+ create mode 100644 templates/etut_kontrol/bos.html
+ create mode 100644 templates/etut_kontrol/deneme.html
+ create mode 100644 templates/etut_kontrol/kontrol.html
+ create mode 100644 templates/etut_kontrol/pdf_deneme.html
+ create mode 100644 templates/etut_kontrol/pdf_talebe.html
+ create mode 100644 templates/etut_kontrol/talebe.html
+ create mode 100644 templates/etut_kontrol/talebeler.html
+
+diff --git a/static/css/etut-kontrol.css b/static/css/etut-kontrol.css
+new file mode 100644
+index 0000000..5cea42c
+--- /dev/null
++++ b/static/css/etut-kontrol.css
+@@ -0,0 +1,50 @@
++/* Etüt Kontrol — panel tokens ile uyumlu */
++.ek-page { max-width: 1180px; margin: 0 auto; padding: 1.25rem 1.1rem 2.5rem; }
++.ek-head { margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
++.ek-kicker { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--cs-muted, #64748b); margin: 0 0 .35rem; }
++.ek-head h1 { margin: 0; font-size: 1.65rem; letter-spacing: -.02em; }
++.ek-desc { margin: .45rem 0 0; color: var(--cs-muted, #64748b); font-size: .94rem; max-width: 52ch; line-height: 1.45; }
++.ek-actions { display: flex; gap: .55rem; flex-wrap: wrap; align-items: center; }
++.ek-card {
++  background: var(--cs-surface, #fff);
++  border: 1px solid rgba(15, 23, 42, .08);
++  border-radius: 16px;
++  padding: 1.1rem 1.15rem;
++  margin-bottom: 1rem;
++  box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
++}
++.ek-card h2 { margin: 0 0 .65rem; font-size: 1.05rem; }
++.ek-muted { color: var(--cs-muted, #64748b); font-size: .86rem; }
++.ek-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .85rem; }
++.ek-box {
++  display: block;
++  text-decoration: none;
++  color: inherit;
++  background: #fff;
++  border: 1px solid rgba(15, 23, 42, .09);
++  border-radius: 14px;
++  padding: 1rem;
++  transition: border-color .18s, transform .18s, box-shadow .18s;
++}
++.ek-box:hover { border-color: rgba(37, 99, 235, .35); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(15,23,42,.08); }
++.ek-box strong { display: block; font-size: 1rem; margin: .45rem 0 .7rem; line-height: 1.3; }
++.ek-stat { font-size: 1.45rem; font-weight: 700; letter-spacing: -.03em; }
++.ek-badge {
++  display: inline-block;
++  padding: .18rem .5rem;
++  border-radius: 999px;
++  background: rgba(15,23,42,.06);
++  font-size: .72rem;
++  color: #475569;
++}
++.ek-danger { color: #b91c1c; }
++.ek-ok { color: #047857; }
++.ek-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
++.ek-table th, .ek-table td { text-align: left; padding: .55rem .4rem; border-bottom: 1px solid rgba(15,23,42,.06); vertical-align: top; }
++.ek-table th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
++.ek-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
++.ek-chart { height: 260px; }
++@media (max-width: 800px) {
++  .ek-split { grid-template-columns: 1fr; }
++  .ek-head h1 { font-size: 1.35rem; }
++}
+diff --git a/takip/deneme_kazanim_excel.py b/takip/deneme_kazanim_excel.py
+new file mode 100644
+index 0000000..ff1b9ae
+--- /dev/null
++++ b/takip/deneme_kazanim_excel.py
+@@ -0,0 +1,207 @@
++"""KonuKazanimDetay Excel → DenemeKazanimSonucu.
++
++Format (deneme kutuğu):
++  satır 1 → ders (merged / forward-fill)
++  satır 2 → konu / kazanım
++  satır 3 → Yüzde | Net
++  satır 4+ → Sınıf | Ad Soyad | değerler
++
++Mevcut Talebe kayıtlarıyla eşleştirir; yeni talebe oluşturmaz.
++"""
++
++from __future__ import annotations
++
++import re
++from dataclasses import dataclass, field
++from decimal import Decimal, InvalidOperation
++
++from django.db import transaction
++from openpyxl import load_workbook
++
++from takip.deneme_excel import talebe_eslestir
++from takip.deneme_models import DenemeKazanimSonucu, DenemeSinavi
++
++
++def clean_label(value) -> str:
++    if value is None:
++        return ""
++    return " ".join(str(value).split())
++
++
++def name_key(value: str) -> str:
++    return clean_label(value).casefold()
++
++
++def parse_decimal(value) -> Decimal | None:
++    if value is None or value == "":
++        return None
++    if isinstance(value, Decimal):
++        return value
++    if isinstance(value, (int, float)):
++        return Decimal(str(value))
++    text = str(value).strip().replace("%", "").replace(",", ".")
++    if not text:
++        return None
++    try:
++        return Decimal(text)
++    except InvalidOperation:
++        return None
++
++
++def parse_net(value) -> tuple[Decimal | None, Decimal | None]:
++    if value is None or value == "":
++        return None, None
++    text = str(value).strip()
++    if not text:
++        return None, None
++    match = re.match(
++        r"^\s*(-?\d+(?:[.,]\d+)?)\s*/\s*(-?\d+(?:[.,]\d+)?)\s*$",
++        text,
++    )
++    if not match:
++        return None, None
++    return parse_decimal(match.group(1)), parse_decimal(match.group(2))
++
++
++@dataclass
++class KazanimImportStats:
++    sonuc_yazilan: int = 0
++    atlanan_bos: int = 0
++    eslesen_talebe: int = 0
++    eslesmeyen: list[str] = field(default_factory=list)
++    konu_sayisi: int = 0
++    uyari: list[str] = field(default_factory=list)
++
++
++def _forward_fill(values: list) -> list[str | None]:
++    filled: list[str | None] = []
++    current: str | None = None
++    for value in values:
++        label = clean_label(value)
++        if label:
++            current = label
++        filled.append(current)
++    return filled
++
++
++def _read_columns(ws) -> list[dict]:
++    row1 = [cell.value for cell in ws[1]]
++    row2 = [cell.value for cell in ws[2]]
++    row3 = [cell.value for cell in ws[3]]
++    subjects = _forward_fill(row1)
++    topics = _forward_fill(row2)
++    columns: list[dict] = []
++    for index in range(2, len(row3)):
++        metric_raw = clean_label(row3[index]).casefold()
++        if metric_raw not in {"yüzde", "yuzde", "net"}:
++            continue
++        subject = subjects[index] if index < len(subjects) else None
++        topic = topics[index] if index < len(topics) else None
++        if not subject or not topic:
++            continue
++        columns.append(
++            {
++                "col": index + 1,
++                "ders": subject,
++                "konu": topic,
++                "metrik": (
++                    "yuzde"
++                    if "yuzde" in metric_raw or "yüzde" in metric_raw
++                    else "net"
++                ),
++            }
++        )
++    return columns
++
++
++@transaction.atomic
++def import_kazanim_excel(uploaded_file, *, deneme: DenemeSinavi) -> KazanimImportStats:
++    stats = KazanimImportStats()
++    wb = load_workbook(uploaded_file, data_only=True, read_only=False)
++    try:
++        ws = wb[wb.sheetnames[0]]
++        columns = _read_columns(ws)
++        if not columns:
++            raise ValueError(
++                "Excel'de konu kolonları bulunamadı. "
++                "KonuKazanimDetay formatında (ders / konu / Yüzde-Net) olmalı."
++            )
++
++        topic_cols: dict[tuple[str, str], dict] = {}
++        for col in columns:
++            key = (name_key(col["ders"]), name_key(col["konu"]))
++            bucket = topic_cols.setdefault(
++                key,
++                {
++                    "ders": col["ders"],
++                    "konu": col["konu"],
++                    "ders_key": key[0],
++                    "konu_key": key[1],
++                    "yuzde_col": None,
++                    "net_col": None,
++                },
++            )
++            if col["metrik"] == "yuzde":
++                bucket["yuzde_col"] = col["col"]
++            else:
++                bucket["net_col"] = col["col"]
++        stats.konu_sayisi = len(topic_cols)
++
++        eslesen: set[int] = set()
++        for row in ws.iter_rows(min_row=4, values_only=False):
++            if not row:
++                continue
++            sinif_ad = clean_label(row[0].value if len(row) > 0 else None)
++            ad_soyad = clean_label(row[1].value if len(row) > 1 else None)
++            if not ad_soyad:
++                continue
++
++            talebe, _tip, _oneriler = talebe_eslestir(ad_soyad, sinif_ad)
++            if talebe is None:
++                etiket = f"{ad_soyad}" + (f" ({sinif_ad})" if sinif_ad else "")
++                if etiket not in stats.eslesmeyen and len(stats.eslesmeyen) < 40:
++                    stats.eslesmeyen.append(etiket)
++                continue
++            eslesen.add(talebe.id)
++
++            for meta in topic_cols.values():
++                yuzde = None
++                net_dogru = None
++                net_toplam = None
++                if meta["yuzde_col"]:
++                    idx = meta["yuzde_col"] - 1
++                    if idx < len(row):
++                        yuzde = parse_decimal(row[idx].value)
++                if meta["net_col"]:
++                    idx = meta["net_col"] - 1
++                    if idx < len(row):
++                        net_dogru, net_toplam = parse_net(row[idx].value)
++                if yuzde is None and net_dogru is None and net_toplam is None:
++                    stats.atlanan_bos += 1
++                    continue
++
++                DenemeKazanimSonucu.objects.update_or_create(
++                    deneme=deneme,
++                    talebe=talebe,
++                    ders_key=meta["ders_key"],
++                    konu_key=meta["konu_key"],
++                    defaults={
++                        "ders_ad": meta["ders"][:120],
++                        "konu_ad": meta["konu"][:300],
++                        "yuzde": yuzde,
++                        "net_dogru": net_dogru,
++                        "net_toplam": net_toplam,
++                    },
++                )
++                stats.sonuc_yazilan += 1
++        stats.eslesen_talebe = len(eslesen)
++    finally:
++        wb.close()
++
++    if stats.sonuc_yazilan == 0:
++        stats.uyari.append("Hiç kazanım satırı yazılmadı; dosya veya eşleşmeleri kontrol edin.")
++    if stats.eslesmeyen:
++        stats.uyari.append(
++            f"{len(stats.eslesmeyen)} isim eşleşmedi (ör. {', '.join(stats.eslesmeyen[:5])})."
++        )
++    return stats
+diff --git a/takip/deneme_models.py b/takip/deneme_models.py
+index 7b4d633..7649097 100644
+--- a/takip/deneme_models.py
++++ b/takip/deneme_models.py
+@@ -367,6 +367,68 @@ class DenemeKonuSonucu(models.Model):
+         return f"{self.konu_normalize or self.konu_ham} ({self.yuzde}%)"
+ 
+ 
++class DenemeKazanimSonucu(models.Model):
++    """KonuKazanimDetay Excel satırı — Gap PDF'den bağımsız kazanım yüzdesi/net."""
++
++    deneme = models.ForeignKey(
++        DenemeSinavi,
++        on_delete=models.CASCADE,
++        related_name="kazanim_sonuclari",
++        verbose_name="Deneme",
++    )
++    talebe = models.ForeignKey(
++        "Talebe",
++        on_delete=models.CASCADE,
++        related_name="deneme_kazanim_sonuclari",
++        verbose_name="Talebe",
++    )
++    ders_ad = models.CharField(max_length=120, verbose_name="Ders")
++    konu_ad = models.CharField(max_length=300, verbose_name="Kazanım / konu")
++    ders_key = models.CharField(max_length=120, db_index=True)
++    konu_key = models.CharField(max_length=300, db_index=True)
++    yuzde = models.DecimalField(
++        max_digits=6,
++        decimal_places=2,
++        null=True,
++        blank=True,
++        verbose_name="Başarı %",
++    )
++    net_dogru = models.DecimalField(
++        max_digits=8,
++        decimal_places=2,
++        null=True,
++        blank=True,
++        verbose_name="Net doğru",
++    )
++    net_toplam = models.DecimalField(
++        max_digits=8,
++        decimal_places=2,
++        null=True,
++        blank=True,
++        verbose_name="Net toplam",
++    )
++    olusturulma = models.DateTimeField(auto_now_add=True)
++    guncellenme = models.DateTimeField(auto_now=True)
++
++    class Meta:
++        verbose_name = "Deneme kazanım sonucu"
++        verbose_name_plural = "Deneme kazanım sonuçları"
++        ordering = ["ders_ad", "konu_ad", "id"]
++        constraints = [
++            models.UniqueConstraint(
++                fields=["deneme", "talebe", "ders_key", "konu_key"],
++                name="deneme_kazanim_benzersiz",
++            )
++        ]
++        indexes = [
++            models.Index(fields=["deneme", "talebe"]),
++            models.Index(fields=["deneme", "konu_key"]),
++        ]
++
++    def __str__(self):
++        return f"{self.talebe_id} · {self.konu_ad} ({self.yuzde}%)"
++
++
+ class DenemeExcelYukleme(models.Model):
+     """Aynı Excel'in yanlışlıkla iki kez yüklenmesini tespit etmek için log."""
+ 
+diff --git a/takip/deneme_yonetim_views.py b/takip/deneme_yonetim_views.py
+index 2388257..321b567 100644
+--- a/takip/deneme_yonetim_views.py
++++ b/takip/deneme_yonetim_views.py
+@@ -25,7 +25,8 @@ from takip.deneme_gap_pdf import (
+     gap_raporu_eslestir,
+     gap_raporu_kaydet,
+ )
+-from takip.deneme_models import DenemeGapRaporu
++from takip.deneme_kazanim_excel import import_kazanim_excel
++from takip.deneme_models import DenemeGapRaporu, DenemeKazanimSonucu
+ from takip.deneme_service import (
+     BRANS_ETIKETLERI,
+     DENEME_DETAY_BRANSLAR,
+@@ -186,6 +187,13 @@ def deneme_detay(request, pk):
+                 for r in gap_raporlari
+                 if r.durum == DenemeGapRaporu.Durum.ESLESME_BEKLIYOR
+             ),
++            "kazanim_satir": DenemeKazanimSonucu.objects.filter(deneme=deneme).count(),
++            "kazanim_talebe": (
++                DenemeKazanimSonucu.objects.filter(deneme=deneme)
++                .values("talebe_id")
++                .distinct()
++                .count()
++            ),
+             "talebeler": (
+                 Talebe.objects.filter(aktif=True).order_by("ad_soyad")
+                 if deneme.durum == DenemeSinavi.Durum.AKTIF
+@@ -210,6 +218,47 @@ def deneme_sil(request, pk):
+     return redirect("yonetim:deneme_listesi")
+ 
+ 
++@yonetici_gerekli
++def deneme_kazanim_yukle(request, pk):
++    if not deneme_yukleyebilir(request.user):
++        messages.error(request, "Kazanım Excel yükleme yetkiniz yok.")
++        return redirect("yonetim:deneme_listesi")
++
++    deneme = get_object_or_404(DenemeSinavi, pk=pk)
++    if deneme.durum != DenemeSinavi.Durum.AKTIF:
++        messages.error(
++            request,
++            "KonuKazanimDetay yalnızca aktif (Excel’i işlenmiş) denemelere yüklenebilir.",
++        )
++        return redirect("yonetim:deneme_detay", pk=pk)
++
++    if request.method != "POST":
++        return redirect("yonetim:deneme_detay", pk=pk)
++
++    dosya = request.FILES.get("kazanim_excel")
++    if not dosya:
++        messages.error(request, "Excel dosyası seçin.")
++        return redirect("yonetim:deneme_detay", pk=pk)
++    if not (dosya.name or "").lower().endswith((".xlsx", ".xlsm")):
++        messages.error(request, "Lütfen .xlsx formatında KonuKazanimDetay dosyası yükleyin.")
++        return redirect("yonetim:deneme_detay", pk=pk)
++
++    try:
++        stats = import_kazanim_excel(dosya, deneme=deneme)
++    except Exception as exc:  # noqa: BLE001
++        messages.error(request, f"Kazanım Excel işlenemedi: {exc}")
++        return redirect("yonetim:deneme_detay", pk=pk)
++
++    messages.success(
++        request,
++        f"Kazanım Excel yüklendi: {stats.sonuc_yazilan} satır, "
++        f"{stats.eslesen_talebe} talebe, {stats.konu_sayisi} konu.",
++    )
++    for uyari in stats.uyari[:3]:
++        messages.warning(request, uyari)
++    return redirect("yonetim:deneme_detay", pk=pk)
++
++
+ @yonetici_gerekli
+ def deneme_gap_yukle(request, pk):
+     if not deneme_yukleyebilir(request.user):
+diff --git a/takip/etut_kontrol_service.py b/takip/etut_kontrol_service.py
+new file mode 100644
+index 0000000..b475d2e
+--- /dev/null
++++ b/takip/etut_kontrol_service.py
+@@ -0,0 +1,479 @@
++"""Etüt Kontrol — kazanım Excel verisi üzerinden grafik / dikkat / kutular."""
++
++from __future__ import annotations
++
++from decimal import Decimal
++
++from django.db.models import Avg, Count, Q
++
++from takip.deneme_models import DenemeKazanimSonucu, DenemeSinavi
++from takip.etut_zimmet_service import etut_mesul_queryset, hoca_talebe_q
++from takip.models import EtutHocasi, Talebe
++from takip.user_helpers import etut_hocasi_for_user
++
++ZAYIF_ESIK = Decimal("70")
++
++
++def _avg_or_none(value) -> Decimal | None:
++    if value is None:
++        return None
++    return Decimal(str(round(float(value), 2)))
++
++
++def _trend(values: list[float | None]) -> str:
++    clean = [v for v in values if v is not None]
++    if len(clean) < 2:
++        return "→"
++    delta = clean[-1] - clean[-2]
++    if delta >= 1.5:
++        return "↑"
++    if delta <= -1.5:
++        return "↓"
++    return "→"
++
++
++def kullanici_etut_hocalari(user) -> list[EtutHocasi]:
++    """Giriş yapan için görülebilir etüt/mesul listesi."""
++    if not user.is_authenticated:
++        return []
++    if user.is_superuser or user.is_staff:
++        return list(etut_mesul_queryset()[:50]) or list(
++            EtutHocasi.objects.filter(aktif=True).order_by("ad_soyad")[:50]
++        )
++    own = etut_hocasi_for_user(user)
++    if own:
++        return [own]
++    return list(etut_mesul_queryset()[:50])
++
++
++def hoca_talebe_ids(hoca: EtutHocasi) -> list[int]:
++    return list(
++        Talebe.objects.filter(aktif=True)
++        .filter(hoca_talebe_q(hoca))
++        .values_list("id", flat=True)
++    )
++
++
++def hoca_baskin_sinif_etiket(hoca: EtutHocasi) -> str:
++    row = (
++        Talebe.objects.filter(aktif=True)
++        .filter(hoca_talebe_q(hoca))
++        .values("sinif_sube__sinif", "sinif_sube__sube")
++        .annotate(n=Count("id"))
++        .order_by("-n")
++        .first()
++    )
++    if not row:
++        return ""
++    sinif = row.get("sinif_sube__sinif") or ""
++    sube = row.get("sinif_sube__sube") or ""
++    return f"{sinif}-{sube}".strip("-")
++
++
++def deneme_ortalama(deneme: DenemeSinavi, talebe_ids: list[int]) -> Decimal | None:
++    if not talebe_ids:
++        return None
++    agg = DenemeKazanimSonucu.objects.filter(
++        deneme=deneme,
++        talebe_id__in=talebe_ids,
++        yuzde__isnull=False,
++    ).aggregate(avg=Avg("yuzde"))
++    return _avg_or_none(agg["avg"])
++
++
++def sinif_deneme_ortalama(deneme: DenemeSinavi, sinif_etiket: str) -> Decimal | None:
++    if not sinif_etiket:
++        return None
++    parts = sinif_etiket.replace(" ", "").split("-")
++    qs = DenemeKazanimSonucu.objects.filter(
++        deneme=deneme,
++        yuzde__isnull=False,
++        talebe__aktif=True,
++    )
++    if len(parts) >= 2:
++        qs = qs.filter(
++            talebe__sinif_sube__sinif=parts[0],
++            talebe__sinif_sube__sube=parts[1],
++        )
++    else:
++        qs = qs.filter(
++            Q(talebe__sinif_sube__sinif=sinif_etiket)
++            | Q(talebe__sinif__icontains=sinif_etiket)
++        )
++    return _avg_or_none(qs.aggregate(avg=Avg("yuzde"))["avg"])
++
++
++def etut_gelisim_serisi(hoca: EtutHocasi) -> dict:
++    ids = hoca_talebe_ids(hoca)
++    sinif_ad = hoca_baskin_sinif_etiket(hoca)
++    denemeler = list(
++        DenemeSinavi.objects.filter(
++            durum=DenemeSinavi.Durum.AKTIF,
++            kazanim_sonuclari__talebe_id__in=ids,
++        )
++        .distinct()
++        .order_by("sinav_tarihi", "id")
++    )
++    labels, etut, sinif = [], [], []
++    for d in denemeler:
++        labels.append(d.ad)
++        etut.append(
++            float(v) if (v := deneme_ortalama(d, ids)) is not None else None
++        )
++        sinif.append(
++            float(v) if (v := sinif_deneme_ortalama(d, sinif_ad)) is not None else None
++        )
++    return {
++        "labels": labels,
++        "etut": etut,
++        "sinif": sinif,
++        "sinif_ad": sinif_ad,
++        "trend": _trend(etut),
++    }
++
++
++def etut_deneme_kutulari(hoca: EtutHocasi) -> list[dict]:
++    ids = hoca_talebe_ids(hoca)
++    sinif_ad = hoca_baskin_sinif_etiket(hoca)
++    denemeler = list(
++        DenemeSinavi.objects.filter(
++            durum=DenemeSinavi.Durum.AKTIF,
++            kazanim_sonuclari__talebe_id__in=ids,
++        )
++        .distinct()
++        .order_by("-sinav_tarihi", "-id")
++    )
++    ortalamalar = []
++    for d in denemeler:
++        ortalamalar.append(deneme_ortalama(d, ids))
++
++    kutular = []
++    for i, d in enumerate(denemeler):
++        etut_ort = ortalamalar[i]
++        onceki = ortalamalar[i + 1] if i + 1 < len(ortalamalar) else None
++        trend_vals = [
++            float(onceki) if onceki is not None else None,
++            float(etut_ort) if etut_ort is not None else None,
++        ]
++        zayif = (
++            DenemeKazanimSonucu.objects.filter(
++                deneme=d,
++                talebe_id__in=ids,
++                yuzde__isnull=False,
++                yuzde__lt=ZAYIF_ESIK,
++            )
++            .values("ders_key", "konu_key")
++            .distinct()
++            .count()
++        )
++        kutular.append(
++            {
++                "deneme": d,
++                "etut_ortalama": etut_ort,
++                "sinif_ortalama": sinif_deneme_ortalama(d, sinif_ad),
++                "zayif_konu": zayif,
++                "trend": _trend(trend_vals),
++            }
++        )
++    return kutular
++
++
++def etut_dikkat(hoca: EtutHocasi) -> dict:
++    ids = hoca_talebe_ids(hoca)
++    sinif_ad = hoca_baskin_sinif_etiket(hoca)
++    son = (
++        DenemeSinavi.objects.filter(
++            durum=DenemeSinavi.Durum.AKTIF,
++            kazanim_sonuclari__talebe_id__in=ids,
++        )
++        .distinct()
++        .order_by("-sinav_tarihi", "-id")
++        .first()
++    )
++    zayif_konular = []
++    if son:
++        rows = (
++            DenemeKazanimSonucu.objects.filter(
++                deneme=son,
++                talebe_id__in=ids,
++                yuzde__isnull=False,
++            )
++            .values("ders_ad", "konu_ad", "ders_key", "konu_key")
++            .annotate(ortalama=Avg("yuzde"), katilim=Count("id"))
++            .order_by("ortalama")
++        )
++        for row in rows:
++            ort = _avg_or_none(row["ortalama"])
++            if ort is None or ort >= ZAYIF_ESIK:
++                continue
++            sinif_ort = None
++            if sinif_ad:
++                srows = DenemeKazanimSonucu.objects.filter(
++                    deneme=son,
++                    ders_key=row["ders_key"],
++                    konu_key=row["konu_key"],
++                    yuzde__isnull=False,
++                    talebe__aktif=True,
++                )
++                parts = sinif_ad.replace(" ", "").split("-")
++                if len(parts) >= 2:
++                    srows = srows.filter(
++                        talebe__sinif_sube__sinif=parts[0],
++                        talebe__sinif_sube__sube=parts[1],
++                    )
++                sinif_ort = _avg_or_none(srows.aggregate(avg=Avg("yuzde"))["avg"])
++            zayif_konular.append(
++                {
++                    "ders": row["ders_ad"],
++                    "konu": row["konu_ad"],
++                    "ders_key": row["ders_key"],
++                    "konu_key": row["konu_key"],
++                    "ortalama": ort,
++                    "sinif_ortalama": sinif_ort,
++                    "zayif": True,
++                }
++            )
++            if len(zayif_konular) >= 12:
++                break
++
++    dusen = []
++    denemeler = list(
++        DenemeSinavi.objects.filter(
++            durum=DenemeSinavi.Durum.AKTIF,
++            kazanim_sonuclari__talebe_id__in=ids,
++        )
++        .distinct()
++        .order_by("-sinav_tarihi", "-id")[:2]
++    )
++    if len(denemeler) == 2:
++        yeni, eski = denemeler[0], denemeler[1]
++        for tid in ids:
++            y = deneme_ortalama(yeni, [tid])
++            e = deneme_ortalama(eski, [tid])
++            if y is None or e is None:
++                continue
++            delta = float(y) - float(e)
++            if delta <= -3:
++                talebe = Talebe.objects.filter(pk=tid).first()
++                if talebe:
++                    dusen.append(
++                        {
++                            "talebe": talebe,
++                            "eski": e,
++                            "yeni": y,
++                            "delta": round(delta, 1),
++                        }
++                    )
++        dusen.sort(key=lambda r: r["delta"])
++        dusen = dusen[:10]
++
++    return {
++        "deneme": son,
++        "zayif_konular": zayif_konular,
++        "dusen_talebeler": dusen,
++    }
++
++
++def etut_deneme_siralamasi(hoca: EtutHocasi, deneme: DenemeSinavi) -> list[dict]:
++    ids = hoca_talebe_ids(hoca)
++    rows = (
++        DenemeKazanimSonucu.objects.filter(
++            deneme=deneme,
++            talebe_id__in=ids,
++            yuzde__isnull=False,
++        )
++        .values(
++            "talebe_id",
++            "talebe__ad_soyad",
++            "talebe__sinif_sube__sinif",
++            "talebe__sinif_sube__sube",
++        )
++        .annotate(ortalama=Avg("yuzde"), konu_sayisi=Count("id"))
++        .order_by("-ortalama")
++    )
++    out = []
++    for i, row in enumerate(rows, start=1):
++        sinif = row.get("talebe__sinif_sube__sinif") or ""
++        sube = row.get("talebe__sinif_sube__sube") or ""
++        out.append(
++            {
++                "sira": i,
++                "talebe_id": row["talebe_id"],
++                "ad_soyad": row["talebe__ad_soyad"],
++                "sinif": f"{sinif}-{sube}".strip("-"),
++                "ortalama": _avg_or_none(row["ortalama"]),
++                "konu_sayisi": row["konu_sayisi"],
++            }
++        )
++    return out
++
++
++def etut_konu_ozeti(hoca: EtutHocasi, deneme: DenemeSinavi) -> list[dict]:
++    ids = hoca_talebe_ids(hoca)
++    rows = (
++        DenemeKazanimSonucu.objects.filter(
++            deneme=deneme,
++            talebe_id__in=ids,
++            yuzde__isnull=False,
++        )
++        .values("ders_ad", "konu_ad", "ders_key", "konu_key")
++        .annotate(ortalama=Avg("yuzde"), talebe_sayisi=Count("talebe_id", distinct=True))
++        .order_by("ders_ad", "konu_ad")
++    )
++    return [
++        {
++            "ders": r["ders_ad"],
++            "konu": r["konu_ad"],
++            "ders_key": r["ders_key"],
++            "konu_key": r["konu_key"],
++            "ortalama": _avg_or_none(r["ortalama"]),
++            "talebe_sayisi": r["talebe_sayisi"],
++            "zayif": r["ortalama"] is not None
++            and Decimal(str(r["ortalama"])) < ZAYIF_ESIK,
++        }
++        for r in rows
++    ]
++
++
++def etut_talebe_kutulari(hoca: EtutHocasi) -> list[dict]:
++    talebeler = list(
++        Talebe.objects.filter(aktif=True)
++        .filter(hoca_talebe_q(hoca))
++        .select_related("sinif_sube")
++        .order_by("ad_soyad")
++    )
++    denemeler = list(
++        DenemeSinavi.objects.filter(durum=DenemeSinavi.Durum.AKTIF).order_by(
++            "-sinav_tarihi", "-id"
++        )
++    )
++    kutular = []
++    for t in talebeler:
++        orts = []
++        zayif_son = 0
++        for d in denemeler:
++            ort = deneme_ortalama(d, [t.id])
++            if ort is not None:
++                orts.append(ort)
++            if not zayif_son and ort is not None:
++                zayif_son = DenemeKazanimSonucu.objects.filter(
++                    deneme=d,
++                    talebe=t,
++                    yuzde__lt=ZAYIF_ESIK,
++                ).count()
++        son = orts[0] if orts else None
++        onceki = orts[1] if len(orts) > 1 else None
++        kutular.append(
++            {
++                "talebe": t,
++                "son_ortalama": son,
++                "trend": _trend(
++                    [
++                        float(onceki) if onceki is not None else None,
++                        float(son) if son is not None else None,
++                    ]
++                ),
++                "zayif_sayisi": zayif_son,
++                "deneme_sayisi": len(orts),
++            }
++        )
++    return kutular
++
++
++def talebe_gelisim_serisi(talebe: Talebe) -> dict:
++    denemeler = list(
++        DenemeSinavi.objects.filter(
++            durum=DenemeSinavi.Durum.AKTIF,
++            kazanim_sonuclari__talebe=talebe,
++        )
++        .distinct()
++        .order_by("sinav_tarihi", "id")
++    )
++    labels, puanlar = [], []
++    for d in denemeler:
++        labels.append(d.ad)
++        v = deneme_ortalama(d, [talebe.id])
++        puanlar.append(float(v) if v is not None else None)
++    return {
++        "labels": labels,
++        "puanlar": puanlar,
++        "son_ortalama": (
++            Decimal(str(puanlar[-1])) if puanlar and puanlar[-1] is not None else None
++        ),
++        "trend": _trend(puanlar),
++    }
++
++
++def talebe_deneme_kutulari(talebe: Talebe) -> list[dict]:
++    denemeler = list(
++        DenemeSinavi.objects.filter(
++            durum=DenemeSinavi.Durum.AKTIF,
++            kazanim_sonuclari__talebe=talebe,
++        )
++        .distinct()
++        .order_by("-sinav_tarihi", "-id")
++    )
++    kutular = []
++    onceki_ort = None
++    # chronological for trend then reverse display
++    chrono = list(reversed(denemeler))
++    ort_map = {}
++    for d in chrono:
++        ort_map[d.id] = deneme_ortalama(d, [talebe.id])
++
++    for d in denemeler:
++        ort = ort_map.get(d.id)
++        # find previous in chrono
++        idx = chrono.index(d)
++        prev = ort_map.get(chrono[idx - 1].id) if idx > 0 else None
++        kazanimlar = list(
++            DenemeKazanimSonucu.objects.filter(deneme=d, talebe=talebe).order_by(
++                "yuzde", "ders_ad", "konu_ad"
++            )
++        )
++        zayiflar = [
++            {
++                "ders": k.ders_ad,
++                "konu": k.konu_ad,
++                "yuzde": k.yuzde,
++                "zayif": k.yuzde is not None and k.yuzde < ZAYIF_ESIK,
++            }
++            for k in kazanimlar
++            if k.yuzde is not None and k.yuzde < ZAYIF_ESIK
++        ]
++        rows = [
++            {
++                "ders": k.ders_ad,
++                "konu": k.konu_ad,
++                "yuzde": k.yuzde,
++                "net_dogru": k.net_dogru,
++                "net_toplam": k.net_toplam,
++                "zayif": k.yuzde is not None and k.yuzde < ZAYIF_ESIK,
++            }
++            for k in sorted(
++                kazanimlar,
++                key=lambda x: (
++                    0 if (x.yuzde is not None and x.yuzde < ZAYIF_ESIK) else 1,
++                    float(x.yuzde) if x.yuzde is not None else 999,
++                    x.ders_ad,
++                    x.konu_ad,
++                ),
++            )
++        ]
++        kutular.append(
++            {
++                "deneme": d,
++                "ortalama": ort,
++                "trend": _trend(
++                    [
++                        float(prev) if prev is not None else None,
++                        float(ort) if ort is not None else None,
++                    ]
++                ),
++                "zayif_sayisi": len(zayiflar),
++                "zayiflar": zayiflar[:15],
++                "kazanimlar": rows,
++                "konu_sayisi": len(kazanimlar),
++            }
++        )
++    return kutular
+diff --git a/takip/etut_kontrol_views.py b/takip/etut_kontrol_views.py
+new file mode 100644
+index 0000000..02aa039
+--- /dev/null
++++ b/takip/etut_kontrol_views.py
+@@ -0,0 +1,280 @@
++"""Etüt Kontrol paneli + kazanım Excel indirme."""
++
++from __future__ import annotations
++
++import json
++from io import BytesIO
++
++from django.contrib import messages
++from django.contrib.auth.decorators import login_required
++from django.http import HttpResponse
++from django.shortcuts import get_object_or_404, redirect, render
++from openpyxl import Workbook
++
++from takip.deneme_models import DenemeSinavi
++from takip.etut_kontrol_service import (
++    etut_deneme_kutulari,
++    etut_deneme_siralamasi,
++    etut_dikkat,
++    etut_gelisim_serisi,
++    etut_konu_ozeti,
++    etut_talebe_kutulari,
++    hoca_baskin_sinif_etiket,
++    hoca_talebe_ids,
++    kullanici_etut_hocalari,
++    deneme_ortalama,
++    sinif_deneme_ortalama,
++    talebe_deneme_kutulari,
++    talebe_gelisim_serisi,
++)
++from takip.models import EtutHocasi, Talebe
++from takip.panel_permissions import deneme_modulu_erisimi_var
++
++
++def _hoca_erisim(request, hoca_id: int) -> EtutHocasi | None:
++    allowed = {h.id: h for h in kullanici_etut_hocalari(request.user)}
++    return allowed.get(hoca_id)
++
++
++@login_required
++def etut_kontrol_panel(request):
++    if not deneme_modulu_erisimi_var(request.user) and not request.user.is_staff:
++        messages.error(request, "Etüt Kontrol için yetkiniz yok.")
++        return redirect("dashboard")
++
++    hocalar = kullanici_etut_hocalari(request.user)
++    if not hocalar:
++        return render(
++            request,
++            "etut_kontrol/bos.html",
++            {"mesaj": "Henüz etüt / sınıf mesulü atanmamış."},
++        )
++    hoca_id = request.GET.get("hoca")
++    if hoca_id:
++        return redirect("etut_kontrol", hoca_id=hoca_id)
++    return redirect("etut_kontrol", hoca_id=hocalar[0].id)
++
++
++@login_required
++def etut_kontrol(request, hoca_id):
++    if not deneme_modulu_erisimi_var(request.user) and not request.user.is_staff:
++        messages.error(request, "Etüt Kontrol için yetkiniz yok.")
++        return redirect("dashboard")
++
++    hoca = _hoca_erisim(request, hoca_id)
++    if hoca is None:
++        messages.error(request, "Bu etüde erişiminiz yok.")
++        return redirect("dashboard")
++
++    hocalar = kullanici_etut_hocalari(request.user)
++    gelisim = etut_gelisim_serisi(hoca)
++    dikkat = etut_dikkat(hoca)
++    kutular = etut_deneme_kutulari(hoca)
++    return render(
++        request,
++        "etut_kontrol/kontrol.html",
++        {
++            "hoca": hoca,
++            "hocalar": hocalar,
++            "gelisim": gelisim,
++            "dikkat": dikkat,
++            "kutular": kutular,
++            "talebe_sayisi": len(hoca_talebe_ids(hoca)),
++            "gelisim_json": json.dumps(
++                {
++                    "labels": gelisim["labels"],
++                    "etut": gelisim["etut"],
++                    "sinif": gelisim["sinif"],
++                    "sinif_ad": gelisim["sinif_ad"],
++                },
++                ensure_ascii=False,
++            ),
++        },
++    )
++
++
++@login_required
++def etut_kontrol_deneme(request, hoca_id, deneme_id):
++    hoca = _hoca_erisim(request, hoca_id)
++    if hoca is None:
++        messages.error(request, "Bu etüde erişiminiz yok.")
++        return redirect("dashboard")
++    deneme = get_object_or_404(DenemeSinavi, pk=deneme_id)
++    sekme = request.GET.get("sekme", "siralama")
++    if sekme not in {"siralama", "kazanim"}:
++        sekme = "siralama"
++
++    siralama = etut_deneme_siralamasi(hoca, deneme)
++    kazanimlar = etut_konu_ozeti(hoca, deneme)
++    ids = hoca_talebe_ids(hoca)
++    sinif_ad = hoca_baskin_sinif_etiket(hoca)
++
++    indir = request.GET.get("indir")
++    if indir == "excel":
++        return _excel_deneme(hoca, deneme, sekme, siralama, kazanimlar)
++    if indir == "pdf":
++        return _pdf_deneme(request, hoca, deneme, sekme, siralama, kazanimlar)
++
++    return render(
++        request,
++        "etut_kontrol/deneme.html",
++        {
++            "hoca": hoca,
++            "deneme": deneme,
++            "sekme": sekme,
++            "siralama": siralama,
++            "kazanimlar": kazanimlar,
++            "sinif_ad": sinif_ad,
++            "etut_ortalama": deneme_ortalama(deneme, ids),
++            "sinif_ortalama": sinif_deneme_ortalama(deneme, sinif_ad),
++        },
++    )
++
++
++@login_required
++def etut_kontrol_talebeler(request, hoca_id):
++    hoca = _hoca_erisim(request, hoca_id)
++    if hoca is None:
++        messages.error(request, "Bu etüde erişiminiz yok.")
++        return redirect("dashboard")
++    return render(
++        request,
++        "etut_kontrol/talebeler.html",
++        {"hoca": hoca, "kutular": etut_talebe_kutulari(hoca)},
++    )
++
++
++@login_required
++def etut_kontrol_talebe(request, hoca_id, talebe_id):
++    hoca = _hoca_erisim(request, hoca_id)
++    if hoca is None:
++        messages.error(request, "Bu etüde erişiminiz yok.")
++        return redirect("dashboard")
++    talebe = get_object_or_404(
++        Talebe.objects.select_related("sinif_sube"), pk=talebe_id
++    )
++    if talebe.id not in hoca_talebe_ids(hoca):
++        messages.error(request, "Bu talebe seçili etütte değil.")
++        return redirect("etut_kontrol_talebeler", hoca_id=hoca.id)
++
++    gelisim = talebe_gelisim_serisi(talebe)
++    kutular = talebe_deneme_kutulari(talebe)
++    indir = request.GET.get("indir")
++    if indir == "excel":
++        return _excel_talebe(talebe, kutular)
++    if indir == "pdf":
++        return _pdf_talebe(request, hoca, talebe, gelisim, kutular)
++
++    return render(
++        request,
++        "etut_kontrol/talebe.html",
++        {
++            "hoca": hoca,
++            "talebe": talebe,
++            "gelisim": gelisim,
++            "kutular": kutular,
++            "gelisim_json": json.dumps(
++                {"labels": gelisim["labels"], "puanlar": gelisim["puanlar"]},
++                ensure_ascii=False,
++            ),
++        },
++    )
++
++
++def _excel_deneme(hoca, deneme, sekme, siralama, kazanimlar):
++    wb = Workbook()
++    ws = wb.active
++    if sekme == "kazanim":
++        ws.title = "Kazanımlar"
++        ws.append(["Ders", "Kazanım", "Etüt ort. %", "Katılan"])
++        for r in kazanimlar:
++            ws.append([r["ders"], r["konu"], float(r["ortalama"] or 0), r["talebe_sayisi"]])
++    else:
++        ws.title = "Sıralama"
++        ws.append(["#", "Talebe", "Sınıf", "Ortalama %", "Konu"])
++        for r in siralama:
++            ws.append(
++                [
++                    r["sira"],
++                    r["ad_soyad"],
++                    r["sinif"],
++                    float(r["ortalama"] or 0),
++                    r["konu_sayisi"],
++                ]
++            )
++    buf = BytesIO()
++    wb.save(buf)
++    resp = HttpResponse(
++        buf.getvalue(),
++        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
++    )
++    resp["Content-Disposition"] = f'attachment; filename="etut-{deneme.id}-{sekme}.xlsx"'
++    return resp
++
++
++def _excel_talebe(talebe, kutular):
++    wb = Workbook()
++    ws = wb.active
++    ws.title = "Kazanımlar"
++    ws.append(["Deneme", "Ders", "Kazanım", "Yüzde", "Net"])
++    for k in kutular:
++        for row in k["kazanimlar"]:
++            net = ""
++            if row["net_dogru"] is not None and row["net_toplam"] is not None:
++                net = f"{row['net_dogru']}/{row['net_toplam']}"
++            ws.append(
++                [
++                    k["deneme"].ad,
++                    row["ders"],
++                    row["konu"],
++                    float(row["yuzde"]) if row["yuzde"] is not None else "",
++                    net,
++                ]
++            )
++    buf = BytesIO()
++    wb.save(buf)
++    resp = HttpResponse(
++        buf.getvalue(),
++        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
++    )
++    resp["Content-Disposition"] = f'attachment; filename="talebe-{talebe.id}-kazanim.xlsx"'
++    return resp
++
++
++def _pdf_deneme(request, hoca, deneme, sekme, siralama, kazanimlar):
++    from takip.pdf_utils import html_to_pdf, make_pdf_response, pdf_error_response
++
++    html = render(
++        request,
++        "etut_kontrol/pdf_deneme.html",
++        {
++            "hoca": hoca,
++            "deneme": deneme,
++            "sekme": sekme,
++            "siralama": siralama,
++            "kazanimlar": kazanimlar,
++        },
++    ).content.decode("utf-8")
++    pdf = html_to_pdf(html, base_url=request.build_absolute_uri("/"))
++    if not pdf:
++        return pdf_error_response("PDF üretilemedi.")
++    return make_pdf_response(pdf, f"etut-{deneme.id}-{sekme}.pdf")
++
++
++def _pdf_talebe(request, hoca, talebe, gelisim, kutular):
++    from takip.pdf_utils import html_to_pdf, make_pdf_response, pdf_error_response
++
++    html = render(
++        request,
++        "etut_kontrol/pdf_talebe.html",
++        {
++            "hoca": hoca,
++            "talebe": talebe,
++            "gelisim": gelisim,
++            "kutular": kutular,
++        },
++    ).content.decode("utf-8")
++    pdf = html_to_pdf(html, base_url=request.build_absolute_uri("/"))
++    if not pdf:
++        return pdf_error_response("PDF üretilemedi.")
++    return make_pdf_response(pdf, f"talebe-{talebe.id}-kazanim.pdf")
+diff --git a/takip/migrations/0101_deneme_kazanim_sonucu.py b/takip/migrations/0101_deneme_kazanim_sonucu.py
+new file mode 100644
+index 0000000..be2558b
+--- /dev/null
++++ b/takip/migrations/0101_deneme_kazanim_sonucu.py
+@@ -0,0 +1,38 @@
++# Generated by Django 6.0.7 on 2026-09-25 03:32
++
++import django.db.models.deletion
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('takip', '0100_aidat_finans_verilerini_sil'),
++    ]
++
++    operations = [
++        migrations.CreateModel(
++            name='DenemeKazanimSonucu',
++            fields=[
++                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
++                ('ders_ad', models.CharField(max_length=120, verbose_name='Ders')),
++                ('konu_ad', models.CharField(max_length=300, verbose_name='Kazanım / konu')),
++                ('ders_key', models.CharField(db_index=True, max_length=120)),
++                ('konu_key', models.CharField(db_index=True, max_length=300)),
++                ('yuzde', models.DecimalField(blank=True, decimal_places=2, max_digits=6, null=True, verbose_name='Başarı %')),
++                ('net_dogru', models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True, verbose_name='Net doğru')),
++                ('net_toplam', models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True, verbose_name='Net toplam')),
++                ('olusturulma', models.DateTimeField(auto_now_add=True)),
++                ('guncellenme', models.DateTimeField(auto_now=True)),
++                ('deneme', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='kazanim_sonuclari', to='takip.denemesinavi', verbose_name='Deneme')),
++                ('talebe', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='deneme_kazanim_sonuclari', to='takip.talebe', verbose_name='Talebe')),
++            ],
++            options={
++                'verbose_name': 'Deneme kazanım sonucu',
++                'verbose_name_plural': 'Deneme kazanım sonuçları',
++                'ordering': ['ders_ad', 'konu_ad', 'id'],
++                'indexes': [models.Index(fields=['deneme', 'talebe'], name='takip_denem_deneme__7e9bb5_idx'), models.Index(fields=['deneme', 'konu_key'], name='takip_denem_deneme__64b02f_idx')],
++                'constraints': [models.UniqueConstraint(fields=('deneme', 'talebe', 'ders_key', 'konu_key'), name='deneme_kazanim_benzersiz')],
++            },
++        ),
++    ]
+diff --git a/takip/models.py b/takip/models.py
+index 14254b7..8920253 100644
+--- a/takip/models.py
++++ b/takip/models.py
+@@ -2101,6 +2101,7 @@ from takip.deneme_models import (  # noqa: E402,F401
+     DenemeEslestirmeAlias,
+     DenemeExcelYukleme,
+     DenemeGapRaporu,
++    DenemeKazanimSonucu,
+     DenemeKonuSonucu,
+     DenemeSinavi,
+     DenemeSonucu,
+diff --git a/takip/panel_permissions.py b/takip/panel_permissions.py
+index 67199d3..6974808 100644
+--- a/takip/panel_permissions.py
++++ b/takip/panel_permissions.py
+@@ -346,6 +346,20 @@ PANEL_NAV_ITEMS: tuple[PanelNavItem, ...] = (
+         active_names=("deneme_listesi", "deneme_detay"),
+         nav_group="Eğitim",
+     ),
++    PanelNavItem(
++        key="etut_kontrol",
++        label="Etüt Kontrol",
++        url_name="etut_kontrol_panel",
++        roller=EGITIM_MODULU_ROLLER,
++        active_names=(
++            "etut_kontrol_panel",
++            "etut_kontrol",
++            "etut_kontrol_deneme",
++            "etut_kontrol_talebeler",
++            "etut_kontrol_talebe",
++        ),
++        nav_group="Eğitim",
++    ),
+     PanelNavItem(
+         key="soru_takip",
+         label="Soru Takip",
+@@ -917,6 +931,8 @@ def panel_nav_items(user: User) -> list[PanelNavItem]:
+             continue
+         if item.key == "deneme" and not deneme_modulu_erisimi_var(user):
+             continue
++        if item.key == "etut_kontrol" and not deneme_modulu_erisimi_var(user):
++            continue
+         if item.key == "soru_takip" and not soru_takip_modulu_erisimi_var(user):
+             continue
+         if item.key == "akademik_mudahale" and not akademik_mudahale_modulu_erisimi_var(
+diff --git a/takip/tests/test_etut_kontrol_kazanim.py b/takip/tests/test_etut_kontrol_kazanim.py
+new file mode 100644
+index 0000000..7ebecc3
+--- /dev/null
++++ b/takip/tests/test_etut_kontrol_kazanim.py
+@@ -0,0 +1,76 @@
++"""Etüt Kontrol + KonuKazanimDetay import smoke tests."""
++
++from __future__ import annotations
++
++from datetime import date
++from decimal import Decimal
++from io import BytesIO
++
++from django.contrib.auth.models import User
++from django.test import TestCase
++from openpyxl import Workbook
++
++from takip.deneme_kazanim_excel import import_kazanim_excel
++from takip.deneme_models import DenemeKazanimSonucu, DenemeSinavi
++from takip.etut_kontrol_service import etut_deneme_kutulari, etut_gelisim_serisi
++from takip.models import EtutHocasi, SinifSube, Talebe
++
++
++def _sample_xlsx(rows: list[tuple]) -> BytesIO:
++    wb = Workbook()
++    ws = wb.active
++    ws.append(["", "", "Matematik", "Matematik", "Türkçe", "Türkçe"])
++    ws.append(["", "", "Kesirler", "Kesirler", "Paragraf", "Paragraf"])
++    ws.append(["Sınıf", "Ad Soyad", "Yüzde", "Net", "Yüzde", "Net"])
++    for row in rows:
++        ws.append(list(row))
++    buf = BytesIO()
++    wb.save(buf)
++    buf.seek(0)
++    buf.name = "KonuKazanimDetay_test.xlsx"
++    return buf
++
++
++class KazanimEtutKontrolTests(TestCase):
++    def setUp(self):
++        self.user = User.objects.create_user("hoca1", password="x")
++        self.hoca = EtutHocasi.objects.create(
++            user=self.user, ad_soyad="Test Hoca", aktif=True
++        )
++        self.sinif = SinifSube.objects.create(sinif="8", sube="A", aktif=True)
++        self.hoca.sorumlu_sinif_subeler.add(self.sinif)
++        self.talebe = Talebe.objects.create(
++            ad_soyad="Ali Veli",
++            sinif="8",
++            sube="A",
++            sinif_sube=self.sinif,
++            etut_hocasi=self.hoca,
++            aktif=True,
++            durum=Talebe.Durum.AKTIF,
++        )
++        self.deneme = DenemeSinavi.objects.create(
++            ad="1. Deneme",
++            sinav_tarihi=date(2026, 3, 1),
++            sinif_seviyesi="8",
++            durum=DenemeSinavi.Durum.AKTIF,
++        )
++
++    def test_import_and_etut_boxes(self):
++        xlsx = _sample_xlsx(
++            [
++                ("8-A", "Ali Veli", 65, "5/8", 80, "7/8"),
++            ]
++        )
++        stats = import_kazanim_excel(xlsx, deneme=self.deneme)
++        self.assertGreaterEqual(stats.sonuc_yazilan, 1)
++        self.assertEqual(stats.eslesen_talebe, 1)
++        self.assertTrue(
++            DenemeKazanimSonucu.objects.filter(
++                deneme=self.deneme, talebe=self.talebe
++            ).exists()
++        )
++        gelisim = etut_gelisim_serisi(self.hoca)
++        self.assertEqual(len(gelisim["labels"]), 1)
++        kutular = etut_deneme_kutulari(self.hoca)
++        self.assertEqual(len(kutular), 1)
++        self.assertIsInstance(kutular[0]["etut_ortalama"], Decimal)
+diff --git a/takip/urls.py b/takip/urls.py
+index fe0199c..2f108a5 100644
+--- a/takip/urls.py
++++ b/takip/urls.py
+@@ -14,6 +14,7 @@ from . import disiplin_views
+ from . import disiplin_kurul_views
+ from . import gunluk_takip_views
+ from . import deneme_views
++from . import etut_kontrol_views
+ from . import yazili_takip_views
+ from . import personel_vazife_views
+ from . import cuma_durum_views
+@@ -392,6 +393,24 @@ urlpatterns = [
+     path("denemeler/<int:pk>/pdf/", deneme_views.deneme_detay_pdf, name="deneme_detay_pdf"),
+     path("denemeler/<int:pk>/detayli-pdf/", deneme_views.deneme_detayli_pdf, name="deneme_detayli_pdf"),
+ 
++    path("etut-kontrol/", etut_kontrol_views.etut_kontrol_panel, name="etut_kontrol_panel"),
++    path("etut-kontrol/<int:hoca_id>/", etut_kontrol_views.etut_kontrol, name="etut_kontrol"),
++    path(
++        "etut-kontrol/<int:hoca_id>/deneme/<int:deneme_id>/",
++        etut_kontrol_views.etut_kontrol_deneme,
++        name="etut_kontrol_deneme",
++    ),
++    path(
++        "etut-kontrol/<int:hoca_id>/talebeler/",
++        etut_kontrol_views.etut_kontrol_talebeler,
++        name="etut_kontrol_talebeler",
++    ),
++    path(
++        "etut-kontrol/<int:hoca_id>/talebe/<int:talebe_id>/",
++        etut_kontrol_views.etut_kontrol_talebe,
++        name="etut_kontrol_talebe",
++    ),
++
+     path("yazili-takip/", yazili_takip_views.yazili_kamp_listesi, name="yazili_kamp_listesi"),
+     path(
+         "yazili-takip/<int:pk>/",
+diff --git a/takip/yonetim_urls.py b/takip/yonetim_urls.py
+index d059ca0..3c653fa 100644
+--- a/takip/yonetim_urls.py
++++ b/takip/yonetim_urls.py
+@@ -790,6 +790,11 @@ urlpatterns = [
+         deneme_yonetim_views.deneme_gap_yukle,
+         name="deneme_gap_yukle",
+     ),
++    path(
++        "denemeler/<int:pk>/kazanim-excel/",
++        deneme_yonetim_views.deneme_kazanim_yukle,
++        name="deneme_kazanim_yukle",
++    ),
+     path(
+         "denemeler/<int:pk>/gap/<int:rapor_id>/eslestir/",
+         deneme_yonetim_views.deneme_gap_eslestir,
+diff --git a/templates/etut_kontrol/bos.html b/templates/etut_kontrol/bos.html
+new file mode 100644
+index 0000000..7557e50
+--- /dev/null
++++ b/templates/etut_kontrol/bos.html
+@@ -0,0 +1,13 @@
++{% extends "base.html" %}
++{% load static %}
++{% block title %}Etüt Kontrol · {{ panel_short }}{% endblock %}
++{% block extra_css %}<link rel="stylesheet" href="{% static 'css/etut-kontrol.css' %}">{% endblock %}
++{% block content %}
++<div class="ek-page">
++  <div class="ek-card">
++    <h1>Etüt Kontrol</h1>
++    <p class="ek-desc">{{ mesaj }}</p>
++    <a class="primary-btn" href="{% url 'dashboard' %}">Ana panele dön</a>
++  </div>
++</div>
++{% endblock %}
+diff --git a/templates/etut_kontrol/deneme.html b/templates/etut_kontrol/deneme.html
+new file mode 100644
+index 0000000..b3c23c2
+--- /dev/null
++++ b/templates/etut_kontrol/deneme.html
+@@ -0,0 +1,69 @@
++{% extends "base.html" %}
++{% load static %}
++{% block title %}{{ deneme.ad }} · Etüt Kontrol{% endblock %}
++{% block extra_css %}<link rel="stylesheet" href="{% static 'css/etut-kontrol.css' %}">{% endblock %}
++{% block content %}
++<div class="ek-page">
++  <header class="ek-head">
++    <div>
++      <p class="ek-kicker">{{ hoca.ad_soyad }} · {{ deneme.sinav_tarihi|date:"d.m.Y" }}</p>
++      <h1>{{ deneme.ad }}</h1>
++      <p class="ek-desc">
++        Etüt ort. {% if etut_ortalama %}{{ etut_ortalama }}%{% else %}—{% endif %}
++        · Sınıf ort. {% if sinif_ortalama %}{{ sinif_ortalama }}%{% else %}—{% endif %}
++        {% if sinif_ad %} ({{ sinif_ad }}){% endif %}
++      </p>
++    </div>
++    <div class="ek-actions">
++      <a href="{% url 'etut_kontrol' hoca.id %}" class="ghost-btn">← Etüt Kontrol</a>
++      <a href="?sekme={{ sekme }}&indir=excel" class="ghost-btn">Excel</a>
++      <a href="?sekme={{ sekme }}&indir=pdf" class="primary-btn">PDF</a>
++    </div>
++  </header>
++
++  <div class="ek-actions" style="margin-bottom:1rem;">
++    <a href="?sekme=siralama" class="{% if sekme == 'siralama' %}primary-btn{% else %}ghost-btn{% endif %}">Genel sıralama</a>
++    <a href="?sekme=kazanim" class="{% if sekme == 'kazanim' %}primary-btn{% else %}ghost-btn{% endif %}">Detaylı kazanım</a>
++  </div>
++
++  <section class="ek-card">
++    {% if sekme == 'siralama' %}
++    <h2>Genel sıralama</h2>
++    {% if siralama %}
++    <table class="ek-table">
++      <thead><tr><th>#</th><th>Talebe</th><th>Sınıf</th><th>Ortalama</th><th>Konu</th></tr></thead>
++      <tbody>
++      {% for row in siralama %}
++      <tr>
++        <td>{{ row.sira }}</td>
++        <td><a href="{% url 'etut_kontrol_talebe' hoca.id row.talebe_id %}">{{ row.ad_soyad }}</a></td>
++        <td><span class="ek-badge">{{ row.sinif }}</span></td>
++        <td><strong>{% if row.ortalama %}{{ row.ortalama }}%{% else %}—{% endif %}</strong></td>
++        <td>{{ row.konu_sayisi }}</td>
++      </tr>
++      {% endfor %}
++      </tbody>
++    </table>
++    {% else %}<p class="ek-muted">Bu denemede etüt kazanım sonucu yok.</p>{% endif %}
++    {% else %}
++    <h2>Detaylı kazanım listesi</h2>
++    <p class="ek-muted" style="margin-bottom:.8rem;">%70 altı kırmızı — etüt ortalaması.</p>
++    {% if kazanimlar %}
++    <table class="ek-table">
++      <thead><tr><th>Ders</th><th>Kazanım</th><th>Etüt ort.</th><th>Katılan</th></tr></thead>
++      <tbody>
++      {% for row in kazanimlar %}
++      <tr>
++        <td>{{ row.ders }}</td>
++        <td>{{ row.konu }}</td>
++        <td class="{% if row.zayif %}ek-danger{% else %}ek-ok{% endif %}"><strong>{% if row.ortalama %}{{ row.ortalama }}%{% else %}—{% endif %}</strong></td>
++        <td>{{ row.talebe_sayisi }}</td>
++      </tr>
++      {% endfor %}
++      </tbody>
++    </table>
++    {% else %}<p class="ek-muted">Kazanım verisi yok.</p>{% endif %}
++    {% endif %}
++  </section>
++</div>
++{% endblock %}
+diff --git a/templates/etut_kontrol/kontrol.html b/templates/etut_kontrol/kontrol.html
+new file mode 100644
+index 0000000..674d7ce
+--- /dev/null
++++ b/templates/etut_kontrol/kontrol.html
+@@ -0,0 +1,135 @@
++{% extends "base.html" %}
++{% load static %}
++{% block title %}Etüt Kontrol · {{ hoca.ad_soyad }}{% endblock %}
++{% block extra_css %}<link rel="stylesheet" href="{% static 'css/etut-kontrol.css' %}">{% endblock %}
++{% block content %}
++<div class="ek-page">
++  <header class="ek-head">
++    <div>
++      <p class="ek-kicker">Etüt Kontrol · {{ talebe_sayisi }} talebe</p>
++      <h1>{{ hoca.ad_soyad }}</h1>
++      <p class="ek-desc">Gelişim grafiği, dikkat listesi ve deneme kutuları. Kazanım Excel’i yönetimden yüklenince burada görünür.</p>
++    </div>
++    <div class="ek-actions">
++      {% if hocalar|length > 1 %}
++      <form method="get" action="{% url 'etut_kontrol_panel' %}">
++        <select name="hoca" onchange="this.form.submit()" class="input">
++          {% for e in hocalar %}
++          <option value="{{ e.id }}" {% if e.id == hoca.id %}selected{% endif %}>{{ e.ad_soyad }}</option>
++          {% endfor %}
++        </select>
++      </form>
++      {% endif %}
++      <a href="{% url 'etut_kontrol_talebeler' hoca.id %}" class="primary-btn">Talebelerim</a>
++    </div>
++  </header>
++
++  <section class="ek-card">
++    <div style="display:flex;justify-content:space-between;gap:.75rem;align-items:baseline;flex-wrap:wrap;">
++      <h2 style="margin:0">Gelişim</h2>
++      <span class="ek-badge">Trend {{ gelisim.trend }}</span>
++    </div>
++    <p class="ek-muted" style="margin:.4rem 0 .8rem">Mavi: etüt ort. · Gri: sınıf ort.{% if gelisim.sinif_ad %} ({{ gelisim.sinif_ad }}){% endif %}</p>
++    <div class="ek-chart"><canvas id="gelisimChart"></canvas></div>
++  </section>
++
++  <section class="ek-card">
++    <h2>Dikkat {% if dikkat.deneme %}<span class="ek-badge">{{ dikkat.deneme.ad }}</span>{% endif %}</h2>
++    <div class="ek-split">
++      <div>
++        <p class="ek-kicker">Zayıf / geride konular</p>
++        {% if dikkat.zayif_konular %}
++        <table class="ek-table">
++          <thead><tr><th>Konu</th><th>Etüt</th><th>Sınıf</th></tr></thead>
++          <tbody>
++          {% for row in dikkat.zayif_konular %}
++          <tr>
++            <td>{{ row.konu }}<div class="ek-muted">{{ row.ders }}</div></td>
++            <td class="ek-danger">{{ row.ortalama }}%</td>
++            <td>{% if row.sinif_ortalama %}{{ row.sinif_ortalama }}%{% else %}—{% endif %}</td>
++          </tr>
++          {% endfor %}
++          </tbody>
++        </table>
++        {% else %}
++        <p class="ek-muted">Kritik zayıf konu yok veya henüz kazanım Excel’i yok.</p>
++        {% endif %}
++      </div>
++      <div>
++        <p class="ek-kicker">Düşüşteki talebeler</p>
++        {% if dikkat.dusen_talebeler %}
++        <table class="ek-table">
++          <thead><tr><th>Talebe</th><th>Önceki</th><th>Son</th><th>Fark</th></tr></thead>
++          <tbody>
++          {% for row in dikkat.dusen_talebeler %}
++          <tr>
++            <td>{{ row.talebe.ad_soyad }}</td>
++            <td>{{ row.eski }}%</td>
++            <td>{{ row.yeni }}%</td>
++            <td class="ek-danger">{{ row.delta }}</td>
++          </tr>
++          {% endfor %}
++          </tbody>
++        </table>
++        {% else %}
++        <p class="ek-muted">Belirgin düşüş yok.</p>
++        {% endif %}
++      </div>
++    </div>
++  </section>
++
++  <section>
++    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem;">
++      <h2 style="margin:0;font-size:1.1rem;">Denemelerim</h2>
++      <span class="ek-muted">{{ kutular|length }} deneme</span>
++    </div>
++    {% if kutular %}
++    <div class="ek-grid">
++      {% for k in kutular %}
++      <a class="ek-box" href="{% url 'etut_kontrol_deneme' hoca.id k.deneme.id %}">
++        <div style="display:flex;justify-content:space-between;gap:.5rem;">
++          <span class="ek-badge">{{ k.deneme.sinav_tarihi|date:"d.m.Y" }}</span>
++          <span class="ek-badge">{{ k.trend }}</span>
++        </div>
++        <strong>{{ k.deneme.ad }}</strong>
++        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
++          <div><div class="ek-muted">Etüt ort.</div><div class="ek-stat">{% if k.etut_ortalama %}{{ k.etut_ortalama }}%{% else %}—{% endif %}</div></div>
++          <div><div class="ek-muted">Sınıf ort.</div><div class="ek-stat">{% if k.sinif_ortalama %}{{ k.sinif_ortalama }}%{% else %}—{% endif %}</div></div>
++        </div>
++        {% if k.zayif_konu %}<div class="ek-danger" style="margin-top:.7rem;font-size:.82rem;">{{ k.zayif_konu }} zayıf konu</div>
++        {% else %}<div class="ek-ok" style="margin-top:.7rem;font-size:.82rem;">Zayıf konu yok</div>{% endif %}
++        <div class="ek-muted" style="margin-top:.55rem;font-size:.8rem;">Sıralama · Kazanımlar →</div>
++      </a>
++      {% endfor %}
++    </div>
++    {% else %}
++    <div class="ek-card"><p class="ek-muted">Henüz kazanım Excel’i yok. Yönetim → Deneme detayından KonuKazanimDetay yükleyin.</p></div>
++    {% endif %}
++  </section>
++</div>
++<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
++<script>
++const data = {{ gelisim_json|safe }};
++const ctx = document.getElementById('gelisimChart');
++if (ctx && data.labels && data.labels.length) {
++  new Chart(ctx, {
++    type: 'line',
++    data: {
++      labels: data.labels.map((l, i) => (i + 1) + '.'),
++      datasets: [
++        { label: 'Etüt ort.', data: data.etut, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.12)', tension: .35, fill: true, borderWidth: 2.4, pointRadius: 3.5 },
++        { label: data.sinif_ad ? ('Sınıf ort. (' + data.sinif_ad + ')') : 'Sınıf ort.', data: data.sinif, borderColor: '#94a3b8', backgroundColor: 'transparent', tension: .35, borderWidth: 2, borderDash: [5,5], pointRadius: 3 }
++      ]
++    },
++    options: {
++      responsive: true, maintainAspectRatio: false,
++      plugins: { legend: { labels: { color: '#334155' } }, tooltip: { callbacks: { title: (items) => data.labels[items[0].dataIndex] || '' } } },
++      scales: {
++        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(15,23,42,.05)' } },
++        y: { min: 40, max: 100, ticks: { color: '#64748b' }, grid: { color: 'rgba(15,23,42,.05)' } }
++      }
++    }
++  });
++}
++</script>
++{% endblock %}
+diff --git a/templates/etut_kontrol/pdf_deneme.html b/templates/etut_kontrol/pdf_deneme.html
+new file mode 100644
+index 0000000..3d01242
+--- /dev/null
++++ b/templates/etut_kontrol/pdf_deneme.html
+@@ -0,0 +1,16 @@
++<!doctype html>
++<html lang="tr"><head><meta charset="utf-8"><title>{{ deneme.ad }}</title>
++<style>body{font-family:DejaVu Sans,sans-serif;font-size:12px;color:#111}h1{font-size:18px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:6px;text-align:left}th{font-size:10px;text-transform:uppercase;color:#555}.z{color:#b91c1c}</style>
++</head><body>
++<h1>{{ deneme.ad }} — {{ hoca.ad_soyad }}</h1>
++<p>{{ deneme.sinav_tarihi }} · {{ sekme }}</p>
++{% if sekme == 'siralama' %}
++<table><thead><tr><th>#</th><th>Talebe</th><th>Sınıf</th><th>%</th></tr></thead><tbody>
++{% for row in siralama %}<tr><td>{{ row.sira }}</td><td>{{ row.ad_soyad }}</td><td>{{ row.sinif }}</td><td>{{ row.ortalama }}</td></tr>{% endfor %}
++</tbody></table>
++{% else %}
++<table><thead><tr><th>Ders</th><th>Kazanım</th><th>%</th></tr></thead><tbody>
++{% for row in kazanimlar %}<tr><td>{{ row.ders }}</td><td>{{ row.konu }}</td><td class="{% if row.zayif %}z{% endif %}">{{ row.ortalama }}</td></tr>{% endfor %}
++</tbody></table>
++{% endif %}
++</body></html>
+diff --git a/templates/etut_kontrol/pdf_talebe.html b/templates/etut_kontrol/pdf_talebe.html
+new file mode 100644
+index 0000000..0b11ff5
+--- /dev/null
++++ b/templates/etut_kontrol/pdf_talebe.html
+@@ -0,0 +1,16 @@
++<!doctype html>
++<html lang="tr"><head><meta charset="utf-8"><title>{{ talebe.ad_soyad }}</title>
++<style>body{font-family:DejaVu Sans,sans-serif;font-size:12px;color:#111}h1{font-size:18px}h2{font-size:14px;margin-top:18px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:5px;text-align:left}.z{color:#b91c1c}</style>
++</head><body>
++<h1>{{ talebe.ad_soyad }}</h1>
++<p>{{ hoca.ad_soyad }} · Son ort. {{ gelisim.son_ortalama }} · Trend {{ gelisim.trend }}</p>
++{% for k in kutular %}
++<h2>{{ k.deneme.ad }} ({{ k.ortalama }}%)</h2>
++<table><thead><tr><th>Ders</th><th>Kazanım</th><th>%</th><th>Net</th></tr></thead><tbody>
++{% for row in k.kazanimlar %}
++<tr><td>{{ row.ders }}</td><td>{{ row.konu }}</td><td class="{% if row.zayif %}z{% endif %}">{{ row.yuzde }}</td>
++<td>{% if row.net_dogru is not None %}{{ row.net_dogru }}/{{ row.net_toplam }}{% endif %}</td></tr>
++{% endfor %}
++</tbody></table>
++{% endfor %}
++</body></html>
+diff --git a/templates/etut_kontrol/talebe.html b/templates/etut_kontrol/talebe.html
+new file mode 100644
+index 0000000..d813cd4
+--- /dev/null
++++ b/templates/etut_kontrol/talebe.html
+@@ -0,0 +1,93 @@
++{% extends "base.html" %}
++{% load static %}
++{% block title %}{{ talebe.ad_soyad }} · Etüt{% endblock %}
++{% block extra_css %}<link rel="stylesheet" href="{% static 'css/etut-kontrol.css' %}">{% endblock %}
++{% block content %}
++<div class="ek-page">
++  <header class="ek-head">
++    <div>
++      <p class="ek-kicker">{{ hoca.ad_soyad }} · {% if talebe.sinif_sube %}{{ talebe.sinif_sube.sinif }}-{{ talebe.sinif_sube.sube }}{% endif %}</p>
++      <h1>{{ talebe.ad_soyad }}</h1>
++      <p class="ek-desc">Deneme puan grafiği; altta her denemenin kazanımları. Zayıflar (%70 altı) kırmızı ve üstte.</p>
++    </div>
++    <div class="ek-actions">
++      <a href="{% url 'etut_kontrol_talebeler' hoca.id %}" class="ghost-btn">← Talebeler</a>
++      <a href="?indir=excel" class="ghost-btn">Excel</a>
++      <a href="?indir=pdf" class="primary-btn">PDF</a>
++    </div>
++  </header>
++
++  <section class="ek-card">
++    <h2>Deneme puanları <span class="ek-badge">{{ gelisim.trend }}</span></h2>
++    <div class="ek-chart"><canvas id="talebeChart"></canvas></div>
++  </section>
++
++  {% for k in kutular %}
++  <section class="ek-card">
++    <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.7rem;">
++      <div>
++        <h2 style="margin:0;">{{ k.deneme.ad }}</h2>
++        <div class="ek-muted">{{ k.deneme.sinav_tarihi|date:"d.m.Y" }} · {{ k.konu_sayisi }} konu</div>
++      </div>
++      <div style="text-align:right;">
++        <span class="ek-badge">{{ k.trend }}</span>
++        <div class="ek-stat">{% if k.ortalama %}{{ k.ortalama }}%{% else %}—{% endif %}</div>
++        {% if k.zayif_sayisi %}<div class="ek-danger" style="font-size:.82rem;">{{ k.zayif_sayisi }} zayıf</div>
++        {% else %}<div class="ek-ok" style="font-size:.82rem;">Zayıf yok</div>{% endif %}
++      </div>
++    </div>
++    {% if k.zayiflar %}
++    <div style="margin-bottom:.8rem;padding:.75rem;border:1px solid rgba(185,28,28,.2);border-radius:12px;background:rgba(185,28,28,.04);">
++      <div class="ek-kicker" style="color:#b91c1c;">Öncelikli zayıf kazanımlar</div>
++      {% for z in k.zayiflar %}
++      <div style="display:flex;justify-content:space-between;gap:.75rem;font-size:.9rem;padding:.2rem 0;">
++        <span>{{ z.konu }} <span class="ek-muted">({{ z.ders }})</span></span>
++        <strong class="ek-danger">{{ z.yuzde }}%</strong>
++      </div>
++      {% endfor %}
++    </div>
++    {% endif %}
++    <details>
++      <summary style="cursor:pointer;color:#1d4ed8;font-size:.9rem;margin-bottom:.5rem;">Tüm kazanımlar</summary>
++      <table class="ek-table">
++        <thead><tr><th>Ders</th><th>Kazanım</th><th>Yüzde</th><th>Net</th></tr></thead>
++        <tbody>
++        {% for row in k.kazanimlar %}
++        <tr>
++          <td>{{ row.ders }}</td>
++          <td>{{ row.konu }}</td>
++          <td class="{% if row.zayif %}ek-danger{% else %}ek-ok{% endif %}">{% if row.yuzde is not None %}{{ row.yuzde }}%{% else %}—{% endif %}</td>
++          <td>{% if row.net_dogru is not None and row.net_toplam is not None %}{{ row.net_dogru }}/{{ row.net_toplam }}{% else %}—{% endif %}</td>
++        </tr>
++        {% endfor %}
++        </tbody>
++      </table>
++    </details>
++  </section>
++  {% empty %}
++  <div class="ek-card"><p class="ek-muted">Bu talebenin kazanım sonucu yok.</p></div>
++  {% endfor %}
++</div>
++<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
++<script>
++const data = {{ gelisim_json|safe }};
++const ctx = document.getElementById('talebeChart');
++if (ctx && data.labels && data.labels.length) {
++  new Chart(ctx, {
++    type: 'line',
++    data: {
++      labels: data.labels.map((l, i) => (i + 1) + '.'),
++      datasets: [{ label: 'Deneme ort.', data: data.puanlar, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.12)', tension: .35, fill: true, borderWidth: 2.4, pointRadius: 3.5 }]
++    },
++    options: {
++      responsive: true, maintainAspectRatio: false,
++      plugins: { legend: { labels: { color: '#334155' } }, tooltip: { callbacks: { title: (items) => data.labels[items[0].dataIndex] || '' } } },
++      scales: {
++        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(15,23,42,.05)' } },
++        y: { min: 40, max: 100, ticks: { color: '#64748b' }, grid: { color: 'rgba(15,23,42,.05)' } }
++      }
++    }
++  });
++}
++</script>
++{% endblock %}
+diff --git a/templates/etut_kontrol/talebeler.html b/templates/etut_kontrol/talebeler.html
+new file mode 100644
+index 0000000..08d3d39
+--- /dev/null
++++ b/templates/etut_kontrol/talebeler.html
+@@ -0,0 +1,40 @@
++{% extends "base.html" %}
++{% load static %}
++{% block title %}Talebeler · {{ hoca.ad_soyad }}{% endblock %}
++{% block extra_css %}<link rel="stylesheet" href="{% static 'css/etut-kontrol.css' %}">{% endblock %}
++{% block content %}
++<div class="ek-page">
++  <header class="ek-head">
++    <div>
++      <p class="ek-kicker">Etüt · Talebelerim</p>
++      <h1>{{ hoca.ad_soyad }}</h1>
++      <p class="ek-desc">Talebe kutularına gir; puan grafiği ve deneme kazanımlarını gör. Zayıflar öne çıkar.</p>
++    </div>
++    <div class="ek-actions">
++      <a href="{% url 'etut_kontrol' hoca.id %}" class="ghost-btn">← Etüt Kontrol</a>
++    </div>
++  </header>
++
++  {% if kutular %}
++  <div class="ek-grid">
++    {% for k in kutular %}
++    <a class="ek-box" href="{% url 'etut_kontrol_talebe' hoca.id k.talebe.id %}">
++      <div style="display:flex;justify-content:space-between;gap:.5rem;">
++        <span class="ek-badge">{% if k.talebe.sinif_sube %}{{ k.talebe.sinif_sube.sinif }}-{{ k.talebe.sinif_sube.sube }}{% else %}—{% endif %}</span>
++        <span class="ek-badge">{{ k.trend }}</span>
++      </div>
++      <strong>{{ k.talebe.ad_soyad }}</strong>
++      <div class="ek-muted">Son ortalama</div>
++      <div class="ek-stat">{% if k.son_ortalama %}{{ k.son_ortalama }}%{% else %}—{% endif %}</div>
++      <div class="{% if k.zayif_sayisi %}ek-danger{% else %}ek-ok{% endif %}" style="margin-top:.65rem;font-size:.82rem;">
++        {% if k.zayif_sayisi %}Son denemede {{ k.zayif_sayisi }} zayıf konu{% else %}Zayıf konu yok{% endif %}
++      </div>
++      <div class="ek-muted" style="margin-top:.4rem;font-size:.78rem;">{{ k.deneme_sayisi }} deneme</div>
++    </a>
++    {% endfor %}
++  </div>
++  {% else %}
++  <div class="ek-card"><p class="ek-muted">Bu etütte talebe yok.</p></div>
++  {% endif %}
++</div>
++{% endblock %}
+diff --git a/templates/yonetim/deneme_detay.html b/templates/yonetim/deneme_detay.html
+index 53d4a05..d4c1e8c 100644
+--- a/templates/yonetim/deneme_detay.html
++++ b/templates/yonetim/deneme_detay.html
+@@ -50,6 +50,22 @@
+     {% endif %}
+ 
+     {% if deneme.durum == 'aktif' %}
++    {% if yukleyebilir %}
++    <section class="yonetim-card" style="margin-bottom:20px;">
++        <h2>KonuKazanimDetay Excel yükle</h2>
++        <p style="margin:0 0 12px;color:#64748b;font-size:13px;">
++            Deneme kutuğundan indirdiğiniz <strong>KonuKazanimDetay</strong> (.xlsx) dosyasını yükleyin.
++            Mevcut talebe isimleriyle eşleşir; Etüt Kontrol paneline grafik / dikkat / talebe kutuları akar.
++            {% if kazanim_satir %}Şu an {{ kazanim_satir }} satır · {{ kazanim_talebe }} talebe kayıtlı.{% endif %}
++        </p>
++        <form method="post" action="{% url 'yonetim:deneme_kazanim_yukle' deneme.pk %}" enctype="multipart/form-data">
++            {% csrf_token %}
++            <input type="file" name="kazanim_excel" accept=".xlsx,.xlsm" class="input" required>
++            <button type="submit" class="primary-btn" style="margin-top:12px;">Kazanım Excel yükle</button>
++        </form>
++    </section>
++    {% endif %}
++
+     {% if yukleyebilir %}
+     <section class="yonetim-card" style="margin-bottom:20px;">
+         <h2>Gap / konu raporu yükle</h2>
+-- 
+2.43.0
+

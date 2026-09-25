@@ -1,0 +1,95 @@
+{% extends "panel_base.html" %}
+{% block title %}{{ deneme.ad }} · {{ etut.ad }}{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>{{ etut.ad }} · {{ deneme.tarih|date:"d.m.Y" }}</small>
+        <h1>{{ deneme.ad }}</h1>
+        <p class="welcome-text">
+            Etüt ort. {% if etut_ortalama %}{{ etut_ortalama }}%{% else %}—{% endif %}
+            · Sınıf ort. {% if sinif_ortalama %}{{ sinif_ortalama }}%{% else %}—{% endif %}
+            {% if sinif %} ({{ sinif.ad }}){% endif %}
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'etut_kontrol' etut.id %}" class="action-btn secondary">← Etüt Kontrol</a>
+        <a href="{% url 'deneme_sinif_raporu' deneme.id %}{% if sinif %}?sinif={{ sinif.id }}{% endif %}" class="action-btn secondary">Sınıf raporu</a>
+        <a href="?sekme={{ sekme }}&indir=excel" class="action-btn secondary">Excel indir</a>
+        <a href="?sekme={{ sekme }}&indir=pdf" class="action-btn primary">PDF indir</a>
+    </div>
+</div>
+
+<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+    <a href="?sekme=siralama" class="action-btn {% if sekme == 'siralama' %}primary{% else %}secondary{% endif %}">Genel sıralama</a>
+    <a href="?sekme=kazanim" class="action-btn {% if sekme == 'kazanim' %}primary{% else %}secondary{% endif %}">Detaylı kazanım listesi</a>
+</div>
+
+{% if sekme == 'siralama' %}
+<section class="panel">
+    <h2>Genel sıralama</h2>
+    {% if siralama %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Talebe</th>
+                <th>Sınıf</th>
+                <th>Ortalama</th>
+                <th>Konu</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in siralama %}
+            <tr>
+                <td>{{ row.sira }}</td>
+                <td><a href="{% url 'etut_talebe_detay' etut.id row.talebe_id %}">{{ row.ad_soyad }}</a></td>
+                <td><span class="badge">{{ row.sinif }}</span></td>
+                <td><strong>{% if row.ortalama %}{{ row.ortalama }}%{% else %}—{% endif %}</strong></td>
+                <td>{{ row.konu_sayisi }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Bu denemede etüt sonucu yok.</p>
+    {% endif %}
+</section>
+{% else %}
+<section class="panel">
+    <h2>Detaylı kazanım listesi</h2>
+    <p class="muted" style="margin-bottom:14px;font-size:13px">
+        %70 altı kırmızı — etüt ortalaması. Konuya tıklayınca talebe kırılımı açılır.
+    </p>
+    {% if kazanimlar %}
+    <table>
+        <thead>
+            <tr>
+                <th>Ders</th>
+                <th>Kazanım</th>
+                <th>Etüt ort.</th>
+                <th>Katılan</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in kazanimlar %}
+            <tr>
+                <td>{{ row.ders }}</td>
+                <td>
+                    <a href="{% url 'etut_konu_detay' etut.id row.konu_id %}?deneme={{ deneme.id }}">
+                        {{ row.konu }}
+                    </a>
+                </td>
+                <td style="color:{% if row.zayif %}#ffb0b0{% else %}#9be7cb{% endif %}">
+                    <strong>{% if row.ortalama %}{{ row.ortalama }}%{% else %}—{% endif %}</strong>
+                </td>
+                <td>{{ row.talebe_sayisi }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Kazanım verisi yok.</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

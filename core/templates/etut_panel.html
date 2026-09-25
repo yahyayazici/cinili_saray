@@ -1,0 +1,71 @@
+{% extends "panel_base.html" %}
+{% block title %}Etüt Paneli | Çinili Saray{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>Etüt hocası</small>
+        <h1>Etüt paneli</h1>
+        <p class="welcome-text">
+            Talebelerini ve etütlerini buradan takip et.
+            Kazanım Excel’i yüklendikçe konular otomatik gelir; etüt ortalamasını ve sınıf raporunu görürsün.
+        </p>
+    </div>
+</div>
+
+<section class="stats">
+    <div class="card"><small>Etüt</small><strong>{{ etutler|length }}</strong></div>
+    <div class="card"><small>Talebe</small><strong>{{ talebeler|length }}</strong></div>
+    <div class="card"><small>Konu</small><strong>{{ konu_sayisi }}</strong></div>
+    <div class="card"><small>Deneme</small><strong>{{ deneme_sayisi }}</strong></div>
+</section>
+
+<section class="panel" style="margin-bottom:16px">
+    <h2>Etütlerim</h2>
+    {% if etutler %}
+    <table>
+        <thead>
+            <tr>
+                <th>Etüt</th>
+                <th>Talebe</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in etutler %}
+            <tr>
+                <td><a href="{% url 'etut_detay' e.id %}">{{ e.ad }}</a></td>
+                <td>{{ e.talebe_sayisi }}</td>
+                <td><a href="{% url 'etut_detay' e.id %}">Aç →</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Henüz etüt yok. Admin’den etüt oluşturup talebe ekleyebilirsin.</p>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <h2>Talebelerim</h2>
+    {% if talebeler %}
+    <table>
+        <thead>
+            <tr>
+                <th>Ad Soyad</th>
+                <th>Sınıf</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in talebeler %}
+            <tr>
+                <td>{{ t.ad_soyad }}</td>
+                <td><span class="badge">{{ t.sinif.ad }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Etütlere talebe eklenince burada listelenir.</p>
+    {% endif %}
+</section>
+{% endblock %}

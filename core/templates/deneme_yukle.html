@@ -1,0 +1,42 @@
+{% extends "panel_base.html" %}
+{% block title %}Deneme Yükle | Çinili Saray{% endblock %}
+{% block content %}
+<div class="topbar">
+    <div>
+        <small>Akademik Takip</small>
+        <h1>Deneme Excel yükle</h1>
+        <p class="welcome-text">
+            Deneme kutuğundan indirdiğin <strong>KonuKazanimDetay_*.xlsx</strong> dosyasını seç.
+        </p>
+    </div>
+    <div class="top-actions">
+        <a href="{% url 'akademik_takip' %}" class="action-btn secondary">← Geri</a>
+    </div>
+</div>
+
+<section class="panel">
+    <h2>Yükleme formu</h2>
+    <form method="post" enctype="multipart/form-data" class="form-grid">
+        {% csrf_token %}
+        <div>
+            <label for="deneme_adi">Deneme adı</label>
+            <input id="deneme_adi" type="text" name="deneme_adi" placeholder="örn. 3. Deneme" required>
+        </div>
+        <div>
+            <label for="deneme_tarihi">Deneme tarihi</label>
+            <input id="deneme_tarihi" type="date" name="deneme_tarihi" required>
+        </div>
+        <div>
+            <label for="rapor">Excel dosyası (.xlsx)</label>
+            <input id="rapor" type="file" name="rapor" accept=".xlsx,.xlsm" required>
+            <p class="hint">
+                Aynı ders/konu adı daha önce yüklendiyse yeniden kullanılır.
+                İlk kez görülen konular otomatik eklenir. Talebeler sınıf + ada göre eşleşir.
+            </p>
+        </div>
+        <div>
+            <button type="submit" class="action-btn primary">İçe aktar</button>
+        </div>
+    </form>
+</section>
+{% endblock %}
